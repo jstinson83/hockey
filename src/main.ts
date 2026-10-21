@@ -11,6 +11,10 @@ const ctx = setupCanvas(canvas);
 let world = createWorld();
 let camera = createCamera(world);
 addEventListener('keydown', (e) => {
+  if (e.code === 'KeyF') {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void document.documentElement.requestFullscreen();
+  }
   if (e.code === 'KeyR') {
     world = createWorld();
     camera = createCamera(world);

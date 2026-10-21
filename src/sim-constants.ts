@@ -37,9 +37,9 @@ export const TUNING = {
 
 /** Presentation only: nothing here affects the simulation. */
 export const VIEW = {
-  width: 640,         // canvas pixels
+  width: 720,         // logical canvas units, 3:2 like the Dragonfly's screen; scaled to fit the window
   height: 480,
-  pxPerUnit: 6.8,     // horizontal scale; the full rink width (plus boards) stays on screen
+  pxPerUnit: 7.7,     // horizontal scale; the full rink width (plus boards) stays on screen
   tilt: 0.8,          // vertical foreshortening (1 = straight top-down, lower = flatter / more angled)
   boardThickness: 2.2, // world units, outside the ice
   boardHeight: 14,    // px the dasher boards rise

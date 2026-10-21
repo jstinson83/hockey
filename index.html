@@ -7,13 +7,13 @@
     <style>
       html, body { margin: 0; height: 100%; background: #111; color: #ddd; font: 14px system-ui, sans-serif; }
       body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-      canvas { max-width: 100vw; max-height: calc(100vh - 28px); aspect-ratio: 4 / 3; background: #1a1d22; }
+      canvas { display: block; background: #1a1d22; } /* size is set from JS to fit the window at 3:2 */
       #hint { height: 28px; line-height: 28px; }
     </style>
   </head>
   <body>
     <canvas id="game"></canvas>
-    <div id="hint">P1: Arrows + Space (or pad 1) · P2: pad 2 · tap = shoot, hold = slapshot · R = reset</div>
+    <div id="hint">P1: Arrows + Space (or pad 1) · P2: pad 2 · tap = shoot, hold = slapshot · R = reset · F = fullscreen</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

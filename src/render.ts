@@ -11,13 +11,33 @@ const MID = RINK.h / 2;
 // Glass is drawn opaque on a scratch layer, then composited translucently, so
 // the overlapping sweep strokes don't accumulate alpha.
 const glassLayer = document.createElement('canvas');
-glassLayer.width = VIEW.width;
-glassLayer.height = VIEW.height;
 const glassCtx = glassLayer.getContext('2d')!;
 
+/** Backing-store pixels per logical VIEW unit; drawing code stays in logical units. */
+let pxScale = 1;
+const HINT_HEIGHT = 28;
+const MAX_BACKING_WIDTH = 2560;
+
+/** Fit the 3:2 canvas to the window and render at the screen's native sharpness. */
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  canvas.width = VIEW.width;
-  canvas.height = VIEW.height;
+  const fit = () => {
+    const availW = window.innerWidth;
+    const availH = window.innerHeight - (document.fullscreenElement ? 0 : HINT_HEIGHT);
+    const cssW = Math.min(availW, availH * (VIEW.width / VIEW.height));
+    const cssH = cssW * (VIEW.height / VIEW.width);
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
+
+    const backingW = Math.min(Math.round(cssW * (window.devicePixelRatio || 1)), MAX_BACKING_WIDTH);
+    canvas.width = backingW;
+    canvas.height = Math.round(backingW * (VIEW.height / VIEW.width));
+    glassLayer.width = canvas.width;
+    glassLayer.height = canvas.height;
+    pxScale = canvas.width / VIEW.width;
+  };
+  fit();
+  addEventListener('resize', fit);
+  document.addEventListener('fullscreenchange', fit);
   return canvas.getContext('2d')!;
 }
 
@@ -27,6 +47,7 @@ function project(cam: Camera, x: number, y: number): { sx: number; sy: number } 
 }
 
 export function render(ctx: CanvasRenderingContext2D, world: World, cam: Camera): void {
+  ctx.setTransform(pxScale, 0, 0, pxScale, 0, 0);
   ctx.fillStyle = '#1a1d22';
   ctx.fillRect(0, 0, VIEW.width, VIEW.height);
 
@@ -192,10 +213,12 @@ function drawWalls(ctx: CanvasRenderingContext2D, cam: Camera, half: 'far' | 'ne
   strokeOutline(ctx, cam, H, half, t / 2, t, '#d9dee5');
 
   // Glass: translucent panel rising from the cap's inner edge.
+  glassCtx.setTransform(pxScale, 0, 0, pxScale, 0, 0);
   glassCtx.clearRect(0, 0, VIEW.width, VIEW.height);
   for (let k = H; k <= H + G; k++) strokeOutline(glassCtx, cam, k, half, 0.15, 0.3, '#bfe3ff');
   ctx.save();
   ctx.globalAlpha = 0.3;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // the layer is already in backing-store pixels
   ctx.drawImage(glassLayer, 0, 0);
   ctx.restore();
   // Bright top rail on the glass.
