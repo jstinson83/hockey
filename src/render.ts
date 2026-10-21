@@ -255,10 +255,6 @@ function markings(c: CanvasRenderingContext2D): void {
   c.beginPath();
   c.arc(CX, MID, 3.6, 0, Math.PI * 2);
   c.stroke();
-  c.fillStyle = '#222';
-  c.beginPath();
-  c.arc(CX, MID, 1.1, 0, Math.PI * 2);
-  c.fill();
 
   // Creases: dotted periwinkle half-discs
   for (const [gy, dir] of [[GOAL.line, 1], [RINK.h - GOAL.line, -1]] as const) {
