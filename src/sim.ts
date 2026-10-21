@@ -25,15 +25,15 @@ export interface World {
   puck: Puck;
 }
 
-function makeSkater(x: number, facing: number, color: string): Skater {
-  return { x, y: RINK.h / 2, vx: 0, vy: 0, facing, charge: 0, actionHeld: false, lockout: 0, color };
+function makeSkater(x: number, y: number, facing: number, color: string): Skater {
+  return { x, y, vx: 0, vy: 0, facing, charge: 0, actionHeld: false, lockout: 0, color };
 }
 
 export function createWorld(): World {
   return {
     skaters: [
-      makeSkater(RINK.w / 2 - 30, 0, '#d33'),
-      makeSkater(RINK.w / 2 + 30, Math.PI, '#36c'),
+      makeSkater(RINK.w / 2, RINK.h / 2 + 30, -Math.PI / 2, '#d33'), // P1 starts below, facing up
+      makeSkater(RINK.w / 2, RINK.h / 2 - 30, Math.PI / 2, '#36c'),
     ],
     puck: { x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, carrier: -1 },
   };

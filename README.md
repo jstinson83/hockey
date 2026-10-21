@@ -22,6 +22,10 @@ Browsers only report a gamepad after a button press on it.
 - `src/sim-constants.ts` - rink dimensions and every feel-related `TUNING` value.
 - `src/collide.ts` - circle-vs-boards (rounded rink) and circle-vs-circle. No physics
   engine on purpose: arcade feel and determinism matter more than realism.
+- `src/camera.ts` / `src/render.ts` - presentation only. Rink long axis is y (goals top and
+  bottom); the view is an oblique projection (`VIEW.tilt` foreshortens y) and the camera
+  scrolls along the ice following the puck. `VIEW` in `sim-constants.ts` holds the scale,
+  tilt and camera feel; none of it touches the simulation.
 - `src/input.ts` - keyboard + Gamepad API -> per-player `Intent`.
 - `src/render.ts` - Canvas drawing; reads the world, never mutates it.
 

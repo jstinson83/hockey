@@ -1,5 +1,5 @@
-/** Rink size in world units (feet-ish). */
-export const RINK = { w: 200, h: 85, corner: 28 };
+/** Rink size in world units (feet-ish). Long axis is y: goals at the top and bottom, like NHL 94. */
+export const RINK = { w: 85, h: 200, corner: 28 };
 
 /** Everything feel-related. A future dev panel will edit this object live. */
 export const TUNING = {
@@ -27,4 +27,16 @@ export const TUNING = {
 
   // Checking
   checkSpeed: 22,     // closing speed that knocks the puck off a carrier
+};
+
+/** Presentation only: nothing here affects the simulation. */
+export const VIEW = {
+  width: 640,         // canvas pixels
+  height: 480,
+  pxPerUnit: 7.2,     // horizontal scale; the full rink width stays on screen
+  tilt: 0.8,          // vertical foreshortening (1 = straight top-down, lower = flatter / more angled)
+  bodyHeight: 5,      // how tall skaters stand above their shadow, in world units
+  followRate: 5,      // camera catch-up speed (higher = snappier)
+  lookahead: 0.35,    // seconds of puck velocity the camera leads by
+  endOverscan: 6,     // how far past the end boards the camera may show
 };
