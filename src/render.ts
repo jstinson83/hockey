@@ -1,10 +1,19 @@
 import type { Camera } from './camera';
-import { RINK, TUNING, VIEW } from './sim-constants';
+import { FACEOFF, GOAL, RINK, TUNING, VIEW } from './sim-constants';
 import type { World } from './sim';
 
 const S = VIEW.pxPerUnit;
 const T = VIEW.tilt;
 const OFFSET_X = (VIEW.width - RINK.w * S) / 2;
+const CX = RINK.w / 2;
+const MID = RINK.h / 2;
+
+// Glass is drawn opaque on a scratch layer, then composited translucently, so
+// the overlapping sweep strokes don't accumulate alpha.
+const glassLayer = document.createElement('canvas');
+glassLayer.width = VIEW.width;
+glassLayer.height = VIEW.height;
+const glassCtx = glassLayer.getContext('2d')!;
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   canvas.width = VIEW.width;
@@ -21,53 +30,90 @@ export function render(ctx: CanvasRenderingContext2D, world: World, cam: Camera)
   ctx.fillStyle = '#1a1d22';
   ctx.fillRect(0, 0, VIEW.width, VIEW.height);
 
-  drawRink(ctx, cam);
+  drawIce(ctx, cam);
+  drawWalls(ctx, cam, 'far'); // behind the action
   drawEntities(ctx, world, cam);
+  drawWalls(ctx, cam, 'near'); // in front of the action
 }
 
-function drawRink(ctx: CanvasRenderingContext2D, cam: Camera): void {
+// ---------------------------------------------------------------- ice
+
+function drawIce(ctx: CanvasRenderingContext2D, cam: Camera): void {
   ctx.save();
   // Draw in world units; the non-uniform scale is what tilts the view.
   ctx.translate(OFFSET_X, VIEW.height / 2 - cam.y * S * T);
   ctx.scale(S, S * T);
 
   ctx.fillStyle = '#eef5f9';
-  ctx.strokeStyle = '#2b2f36';
-  ctx.lineWidth = 0.7;
   ctx.beginPath();
   ctx.roundRect(0, 0, RINK.w, RINK.h, RINK.corner);
   ctx.fill();
-  ctx.stroke();
 
-  const mid = RINK.h / 2;
-  const goalLine = 11;
   ctx.lineWidth = 0.6;
-  hline(ctx, mid, '#c33');
-  hline(ctx, mid - 25, '#36c');
-  hline(ctx, mid + 25, '#36c');
-  hline(ctx, goalLine, '#c33');
-  hline(ctx, RINK.h - goalLine, '#c33');
+  hline(ctx, MID, '#c33');
+  hline(ctx, MID - FACEOFF.blueLine, '#36c');
+  hline(ctx, MID + FACEOFF.blueLine, '#36c');
+  hline(ctx, GOAL.line, '#c33');
+  hline(ctx, RINK.h - GOAL.line, '#c33');
 
+  // Centre circle and dot
   ctx.strokeStyle = '#36c';
   ctx.lineWidth = 0.4;
   ctx.beginPath();
-  ctx.arc(RINK.w / 2, mid, 15, 0, Math.PI * 2);
+  ctx.arc(CX, MID, FACEOFF.radius, 0, Math.PI * 2);
   ctx.stroke();
+  dot(ctx, CX, MID, 1, '#36c');
 
-  // Creases and nets
+  // End-zone faceoff circles + spots
+  for (const gy of [GOAL.line + FACEOFF.endZoneFromGoalLine, RINK.h - GOAL.line - FACEOFF.endZoneFromGoalLine]) {
+    for (const sx of [CX - FACEOFF.dx, CX + FACEOFF.dx]) faceoffCircle(ctx, sx, gy);
+  }
+  // Neutral-zone spots, just outside each blue line
+  for (const ny of [MID - FACEOFF.blueLine + FACEOFF.neutralFromBlueLine, MID + FACEOFF.blueLine - FACEOFF.neutralFromBlueLine]) {
+    for (const sx of [CX - FACEOFF.dx, CX + FACEOFF.dx]) dot(ctx, sx, ny, 0.9, '#c33');
+  }
+
+  // Creases
   ctx.strokeStyle = '#c33';
   ctx.fillStyle = 'rgba(80,140,200,0.25)';
-  for (const [gy, dir] of [[goalLine, 1], [RINK.h - goalLine, -1]] as const) {
+  ctx.lineWidth = 0.4;
+  for (const [gy, dir] of [[GOAL.line, 1], [RINK.h - GOAL.line, -1]] as const) {
     ctx.beginPath();
-    ctx.arc(RINK.w / 2, gy, 6, dir === 1 ? 0 : Math.PI, dir === 1 ? Math.PI : Math.PI * 2);
+    ctx.arc(CX, gy, GOAL.crease, dir === 1 ? 0 : Math.PI, dir === 1 ? Math.PI : Math.PI * 2);
+    ctx.closePath();
     ctx.fill();
     ctx.stroke();
   }
-  ctx.fillStyle = '#888';
-  ctx.fillRect(RINK.w / 2 - 3, goalLine - 4, 6, 4);
-  ctx.fillRect(RINK.w / 2 - 3, RINK.h - goalLine, 6, 4);
 
   ctx.restore();
+}
+
+function faceoffCircle(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  const r = FACEOFF.radius;
+  ctx.strokeStyle = '#c33';
+  ctx.lineWidth = 0.4;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.stroke();
+  dot(ctx, x, y, 1.1, '#c33');
+  // Hash marks: short ticks flanking the circle top and bottom.
+  ctx.lineWidth = 0.5;
+  for (const side of [-1, 1]) {
+    for (const end of [-1, 1]) {
+      const hx = x + side * 1.4;
+      ctx.beginPath();
+      ctx.moveTo(hx, y + end * (r - 0.2));
+      ctx.lineTo(hx, y + end * (r + 3));
+      ctx.stroke();
+    }
+  }
+}
+
+function dot(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string): void {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function hline(ctx: CanvasRenderingContext2D, y: number, color: string): void {
@@ -78,13 +124,130 @@ function hline(ctx: CanvasRenderingContext2D, y: number, color: string): void {
   ctx.stroke();
 }
 
+// ---------------------------------------------------------------- boards + glass
+
+/**
+ * Stroke the rink outline lifted `lift` px above the ice. Sweeping this over a
+ * range of lifts extrudes the boards upward, which is all a tilted view needs
+ * to read as a wall. `half` keeps only the far or near half of the rink
+ * (split at the centre line) so each half can be layered around the players.
+ */
+function strokeOutline(
+  c: CanvasRenderingContext2D, cam: Camera, lift: number, half: 'far' | 'near',
+  inflate: number, thickness: number, color: string,
+): void {
+  c.save();
+  c.translate(OFFSET_X, VIEW.height / 2 - cam.y * S * T - lift);
+  c.scale(S, S * T);
+  c.beginPath();
+  if (half === 'far') c.rect(-10, -50, RINK.w + 20, MID + 50);
+  else c.rect(-10, MID, RINK.w + 20, MID + 50);
+  c.clip();
+  c.beginPath();
+  c.roundRect(-inflate, -inflate, RINK.w + inflate * 2, RINK.h + inflate * 2, RINK.corner + inflate);
+  c.lineWidth = thickness;
+  c.strokeStyle = color;
+  c.stroke();
+  c.restore();
+}
+
+function drawWalls(ctx: CanvasRenderingContext2D, cam: Camera, half: 'far' | 'near'): void {
+  const t = VIEW.boardThickness;
+  const H = VIEW.boardHeight;
+  const G = VIEW.glassHeight;
+
+  // Dasher boards: dark inner face, light cap on top.
+  for (let k = 0; k <= H; k++) strokeOutline(ctx, cam, k, half, t / 2, t, '#26395f');
+  strokeOutline(ctx, cam, H, half, t / 2, t, '#d9dee5');
+
+  // Glass: translucent panel rising from the cap's inner edge.
+  glassCtx.clearRect(0, 0, VIEW.width, VIEW.height);
+  for (let k = H; k <= H + G; k++) strokeOutline(glassCtx, cam, k, half, 0.15, 0.3, '#bfe3ff');
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.drawImage(glassLayer, 0, 0);
+  ctx.restore();
+  // Bright top rail on the glass.
+  ctx.save();
+  ctx.globalAlpha = 0.7;
+  strokeOutline(ctx, cam, H + G, half, 0.15, 0.3, '#ffffff');
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- entities
+
 function drawEntities(ctx: CanvasRenderingContext2D, world: World, cam: Camera): void {
   // Painter's algorithm: things lower on the ice are nearer the viewer.
   type Item = { y: number; draw: () => void };
   const items: Item[] = world.skaters.map((s) => ({ y: s.y, draw: () => drawSkater(ctx, cam, s) }));
   items.push({ y: world.puck.y, draw: () => drawPuck(ctx, cam, world.puck) });
+  // Far net is behind everything; near net's back is the closest thing on the ice.
+  items.push({ y: GOAL.line - GOAL.depth, draw: () => drawNet(ctx, cam, GOAL.line, -1) });
+  items.push({ y: RINK.h - GOAL.line + GOAL.depth, draw: () => drawNet(ctx, cam, RINK.h - GOAL.line, 1) });
   items.sort((a, b) => a.y - b.y);
   for (const it of items) it.draw();
+}
+
+/** A box on the ice: front opening on the goal line, extending `dir` (-1 up the screen, +1 down) by GOAL.depth. */
+function drawNet(ctx: CanvasRenderingContext2D, cam: Camera, gy: number, dir: -1 | 1): void {
+  const hh = GOAL.height * S * T; // net height in px
+  const x0 = CX - GOAL.width / 2;
+  const x1 = CX + GOAL.width / 2;
+  const fL = project(cam, x0, gy);
+  const fR = project(cam, x1, gy);
+  const bL = project(cam, x0, gy + dir * GOAL.depth);
+  const bR = project(cam, x1, gy + dir * GOAL.depth);
+  const up = (p: { sx: number; sy: number }) => ({ sx: p.sx, sy: p.sy - hh });
+  const fLt = up(fL), fRt = up(fR), bLt = up(bL), bRt = up(bR);
+
+  const poly = (pts: { sx: number; sy: number }[], fill: string) => {
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(p.sx, p.sy) : ctx.moveTo(p.sx, p.sy)));
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  // Floor, then back/side netting (the far side of the box first).
+  poly([fL, fR, bR, bL], 'rgba(120,130,150,0.25)');
+  poly([bL, bR, bRt, bLt], 'rgba(90,100,120,0.35)');
+  poly([fL, bL, bLt, fLt], 'rgba(90,100,120,0.22)');
+  poly([fR, bR, bRt, fRt], 'rgba(90,100,120,0.22)');
+
+  // Mesh hatch on the back panel.
+  ctx.strokeStyle = 'rgba(60,70,90,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const n = 9;
+  for (let i = 1; i < n; i++) {
+    const f = i / n;
+    ctx.moveTo(bL.sx + (bR.sx - bL.sx) * f, bL.sy);
+    ctx.lineTo(bLt.sx + (bRt.sx - bLt.sx) * f, bLt.sy);
+  }
+  for (let i = 1; i < 4; i++) {
+    const f = i / 4;
+    ctx.moveTo(bL.sx, bL.sy - hh * f);
+    ctx.lineTo(bR.sx, bR.sy - hh * f);
+  }
+  ctx.stroke();
+
+  // Frame: back edges thin, front posts and crossbar bold.
+  ctx.strokeStyle = '#8a8f99';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(bLt.sx, bLt.sy); ctx.lineTo(bRt.sx, bRt.sy);
+  ctx.moveTo(fLt.sx, fLt.sy); ctx.lineTo(bLt.sx, bLt.sy);
+  ctx.moveTo(fRt.sx, fRt.sy); ctx.lineTo(bRt.sx, bRt.sy);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#d33';
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(fL.sx, fL.sy); ctx.lineTo(fLt.sx, fLt.sy);
+  ctx.lineTo(fRt.sx, fRt.sy); ctx.lineTo(fR.sx, fR.sy);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
 }
 
 function shadow(ctx: CanvasRenderingContext2D, cam: Camera, x: number, y: number, r: number): void {

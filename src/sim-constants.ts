@@ -1,6 +1,12 @@
 /** Rink size in world units (feet-ish). Long axis is y: goals at the top and bottom, like NHL 94. */
 export const RINK = { w: 85, h: 200, corner: 28 };
 
+/** Goal geometry. Nets sit behind the goal line, centred on the rink. Oversized vs. the real thing on purpose. */
+export const GOAL = { line: 11, width: 14, depth: 6, height: 4, crease: 9 };
+
+/** Faceoff spots sit this far either side of the centre line. */
+export const FACEOFF = { dx: 22, radius: 15, endZoneFromGoalLine: 20, neutralFromBlueLine: 5, blueLine: 25 };
+
 /** Everything feel-related. A future dev panel will edit this object live. */
 export const TUNING = {
   // Skaters
@@ -33,10 +39,13 @@ export const TUNING = {
 export const VIEW = {
   width: 640,         // canvas pixels
   height: 480,
-  pxPerUnit: 7.2,     // horizontal scale; the full rink width stays on screen
+  pxPerUnit: 6.8,     // horizontal scale; the full rink width (plus boards) stays on screen
   tilt: 0.8,          // vertical foreshortening (1 = straight top-down, lower = flatter / more angled)
+  boardThickness: 2.2, // world units, outside the ice
+  boardHeight: 14,    // px the dasher boards rise
+  glassHeight: 13,    // px of glass above the boards
   bodyHeight: 5,      // how tall skaters stand above their shadow, in world units
   followRate: 5,      // camera catch-up speed (higher = snappier)
   lookahead: 0.35,    // seconds of puck velocity the camera leads by
-  endOverscan: 6,     // how far past the end boards the camera may show
+  endOverscan: 8,     // how far past the end boards the camera may show
 };
