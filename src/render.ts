@@ -665,29 +665,31 @@ function drawHud(ctx: CanvasRenderingContext2D, world: World): void {
   const g = world.game;
   const font = (px: number) => `800 ${px}px system-ui, -apple-system, "Segoe UI", sans-serif`;
 
-  // Scoreboard
-  const bw = 330;
+  // Scoreboard: bottom right, out of the way of the action
+  const bw = 250;
   const bh = 42;
-  const bx = (VIEW.width - bw) / 2;
+  const bx = OFFSET_X + RINK.w * S - bw - 8; // inside the boards
+  const by = VIEW.height - bh - 12;
+  const mid = bx + bw / 2;
   ctx.fillStyle = 'rgba(15,18,24,0.85)';
   ctx.beginPath();
-  ctx.roundRect(bx, 8, bw, bh, 9);
+  ctx.roundRect(bx, by, bw, bh, 9);
   ctx.fill();
   ctx.textBaseline = 'middle';
-  ctx.font = font(20);
+  ctx.font = font(17);
   ctx.textAlign = 'right';
   ctx.fillStyle = TEAM_COLORS[0];
-  ctx.fillText(`${TEAM_NAMES[0]}  ${g.score[0]}`, bx + 125, 8 + bh / 2);
+  ctx.fillText(`${TEAM_NAMES[0]}  ${g.score[0]}`, mid - 32, by + bh / 2);
   ctx.textAlign = 'left';
   ctx.fillStyle = TEAM_COLORS[1];
-  ctx.fillText(`${g.score[1]}  ${TEAM_NAMES[1]}`, bx + bw - 125, 8 + bh / 2);
+  ctx.fillText(`${g.score[1]}  ${TEAM_NAMES[1]}`, mid + 32, by + bh / 2);
   ctx.textAlign = 'center';
   ctx.fillStyle = '#f2f4f7';
   ctx.font = font(18);
-  ctx.fillText(formatClock(g.clock), VIEW.width / 2, 8 + 15);
+  ctx.fillText(formatClock(g.clock), mid, by + 15);
   ctx.font = font(11);
   ctx.fillStyle = '#9aa3ad';
-  ctx.fillText(periodLabel(world), VIEW.width / 2, 8 + 33);
+  ctx.fillText(periodLabel(world), mid, by + 33);
 
   const cx = VIEW.width / 2;
   const cy = VIEW.height / 2 - 40;
