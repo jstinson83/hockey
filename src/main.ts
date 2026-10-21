@@ -7,7 +7,8 @@ const MAX_FRAME = 0.25; // avoid spiral of death after tab switches
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const ctx = setupCanvas(canvas);
-const world = createWorld();
+let world = createWorld();
+addEventListener('keydown', (e) => { if (e.code === 'KeyR') world = createWorld(); });
 
 let last = performance.now();
 let acc = 0;

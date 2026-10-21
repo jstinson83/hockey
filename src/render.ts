@@ -42,13 +42,34 @@ export function render(ctx: CanvasRenderingContext2D, world: World): void {
   ctx.fillRect(11 - 4, RINK.h / 2 - 3, 4, 6);
   ctx.fillRect(RINK.w - 11, RINK.h / 2 - 3, 4, 6);
 
-  // Skaters
+  // Skaters: body, facing tick, and a charge ring while winding up a shot
   for (const s of world.skaters) {
     ctx.fillStyle = s.color;
     ctx.beginPath();
     ctx.arc(s.x, s.y, TUNING.skaterRadius, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(s.x + Math.cos(s.facing) * TUNING.skaterRadius * 1.6, s.y + Math.sin(s.facing) * TUNING.skaterRadius * 1.6);
+    ctx.stroke();
+
+    if (s.charge > 0) {
+      const t = Math.min(s.charge / TUNING.chargeTime, 1);
+      ctx.strokeStyle = t >= 1 ? '#e80' : '#888';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, TUNING.skaterRadius + 1, -Math.PI / 2, -Math.PI / 2 + t * Math.PI * 2);
+      ctx.stroke();
+    }
   }
+
+  // Puck
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(world.puck.x, world.puck.y, TUNING.puckRadius, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.restore();
 }
