@@ -67,6 +67,31 @@ describe('goals', () => {
   });
 });
 
+describe('wrapping behind the net', () => {
+  it.each([0, 1])('carrying the puck into the back of net %i from behind does not score', (n) => {
+    const w = liveWorld();
+    const net = NETS[n];
+    const s = w.skaters[n === 0 ? 0 : 1];
+    // Behind the net, facing it, as close to the boards as a skater can get.
+    s.x = CX; s.y = net.gy + net.dir * (GOAL.depth + 3.2); s.facing = net.dir === -1 ? Math.PI / 2 : -Math.PI / 2;
+    w.puck.carrier = w.skaters.indexOf(s);
+    const intent = { x: 0, y: -net.dir, action: false };
+    for (let i = 0; i < 3 * 60; i++) {
+      step(w, n === 0 ? [intent, idle] : [idle, intent], DT);
+      expect(w.game.phase).toBe('play');
+    }
+    expect(w.game.score).toEqual([0, 0]);
+  });
+
+  it('a puck shot into the back of the net from behind bounces off', () => {
+    const w = liveWorld();
+    const net = NETS[0];
+    w.puck.x = CX; w.puck.y = net.backY - 3; w.puck.vx = 0; w.puck.vy = 60;
+    run(w, 1);
+    expect(w.game.score).toEqual([0, 0]);
+  });
+});
+
 describe('goalie', () => {
   function shoot(targetX: number, speed: number): World {
     const w = liveWorld();

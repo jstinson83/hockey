@@ -1,5 +1,5 @@
 import {
-  bounceOffBoards, collideCircles, collideNet, collideStatic, NETS, type Net,
+  bounceOffBoards, collideCircles, collideNet, collideStatic, firstNetCrossing, NETS, type Net,
 } from './collide';
 import type { Intent } from './input';
 import { GAME, GOAL, RINK, TEAM_COLORS, TUNING } from './sim-constants';
@@ -251,6 +251,15 @@ function updatePuck(world: World, dt: number): void {
     puck.vx = c.vx;
     puck.vy = c.vy;
 
+    // The puck stays on the skater's side of any net frame: if the carry line crosses
+    // one (skating into the back of the net, say), shorten the carry so it rests against it.
+    const crossing = Math.min(...NETS.map((net) => firstNetCrossing(c.x, c.y, puck.x, puck.y, net)));
+    if (crossing < 1) {
+      const d = Math.max(0.8, crossing * TUNING.carryOffset - (r + TUNING.postRadius));
+      puck.x = c.x + Math.cos(c.facing) * d;
+      puck.y = c.y + Math.sin(c.facing) * d;
+    }
+
     // A carried puck can't go through the nets or a goalie: push the skater back instead.
     const px = puck.x;
     const py = puck.y;
@@ -341,14 +350,19 @@ function handleShot(world: World, i: number, intent: Intent | undefined, dt: num
   s.actionHeld = held;
 }
 
-/** A puck wholly past the goal line and between the posts is a goal for the other team. */
+/**
+ * A puck inside the net - wholly past the goal line, between the posts, and
+ * still in front of the back - is a goal for the other team. (Behind the net
+ * is not in the net.)
+ */
 function checkGoal(world: World): void {
   const { puck, game } = world;
   if (game.phase !== 'play') return;
   NETS.forEach((net, i) => {
     const inMouth = puck.x > net.x0 && puck.x < net.x1;
-    const pastLine = (puck.y - net.gy) * net.dir > TUNING.puckRadius;
-    if (!inMouth || !pastLine) return;
+    const depth = (puck.y - net.gy) * net.dir; // how far past the goal line, toward the back
+    const inside = depth > TUNING.puckRadius && depth < GOAL.depth;
+    if (!inMouth || !inside) return;
     const scorer: Team = i === 0 ? 0 : 1; // the far net is red's target
     game.score[scorer]++;
     game.lastScorer = scorer;

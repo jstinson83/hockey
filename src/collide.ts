@@ -151,15 +151,47 @@ function collideSegment(
   }
 }
 
+/** Net frame segments as [ax, ay, bx, by, thickness]; `door` adds the closed mouth. */
+function netSegments(net: Net, door: boolean): [number, number, number, number, number][] {
+  const post = TUNING.postRadius;
+  const segs: [number, number, number, number, number][] = [
+    [net.x0, net.gy, net.x0, net.backY, post],
+    [net.x0, net.backY, net.x1, net.backY, post],
+    [net.x1, net.backY, net.x1, net.gy, post],
+  ];
+  if (door) segs.push([net.x0, net.gy, net.x1, net.gy, 0.3]);
+  return segs;
+}
+
 /**
  * Circle vs. a net's frame (two sides and the back, thickened by the post
  * radius). `door` also closes the mouth: skaters, and a puck they carry, can't
  * enter the net; a loose puck can.
  */
 export function collideNet(b: Body, r: number, net: Net, restitution: number, door: boolean): void {
-  const post = TUNING.postRadius;
-  collideSegment(b, r, net.x0, net.gy, net.x0, net.backY, post, restitution);
-  collideSegment(b, r, net.x0, net.backY, net.x1, net.backY, post, restitution);
-  collideSegment(b, r, net.x1, net.backY, net.x1, net.gy, post, restitution);
-  if (door) collideSegment(b, r, net.x0, net.gy, net.x1, net.gy, 0.3, restitution);
+  for (const [ax, ay, bx, by, thickness] of netSegments(net, door)) {
+    collideSegment(b, r, ax, ay, bx, by, thickness, restitution);
+  }
+}
+
+/**
+ * Where (0..1) the line from (sx,sy) to (px,py) first crosses any part of the
+ * net, mouth included; 1 when it doesn't. Used to stop a carried puck from
+ * being dragged through the frame: a circle test alone can't tell which side
+ * of a wall the puck belongs on once its centre has crossed it.
+ */
+export function firstNetCrossing(sx: number, sy: number, px: number, py: number, net: Net): number {
+  const dx = px - sx;
+  const dy = py - sy;
+  let best = 1;
+  for (const [ax, ay, bx, by] of netSegments(net, true)) {
+    const ex = bx - ax;
+    const ey = by - ay;
+    const denom = dx * ey - dy * ex;
+    if (denom === 0) continue;
+    const t = ((ax - sx) * ey - (ay - sy) * ex) / denom;
+    const s = ((ax - sx) * dy - (ay - sy) * dx) / denom;
+    if (t >= 0 && t <= 1 && s >= 0 && s <= 1 && t < best) best = t;
+  }
+  return best;
 }
