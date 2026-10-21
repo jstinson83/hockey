@@ -2,7 +2,12 @@
 export const RINK = { w: 85, h: 200, corner: 28 };
 
 /** Goal geometry. Nets sit behind the goal line, centred on the rink. Oversized vs. the real thing on purpose. */
-export const GOAL = { line: 11, width: 14, depth: 6, height: 4, crease: 12 };
+export const GOAL = { line: 12, width: 14, depth: 5, height: 4, crease: 12 };
+
+/** Game flow. Team 0 (red, P1) defends the bottom net and attacks the top; team 1 (blue) the reverse. */
+export const GAME = { periods: 3, periodSeconds: 120, overtimeSeconds: 120, faceoffSeconds: 1.5, goalSeconds: 2.5 };
+export const TEAM_COLORS = ['#d33', '#36c'] as const;
+export const TEAM_NAMES = ['RED', 'BLUE'] as const;
 
 /** Faceoff spots sit this far either side of the centre line. */
 export const FACEOFF = { dx: 22, radius: 14, endZoneFromGoalLine: 19, neutralFromBlueLine: 5, blueLine: 28 };
@@ -30,6 +35,21 @@ export const TUNING = {
   wristSpeed: 70,
   slapSpeed: 130,
   chargeTime: 0.6,    // s of holding for a full slapshot
+
+  // Nets and goalies
+  postRadius: 0.6,      // net frame thickness (puck and skaters collide with it)
+  netBounce: 0.3,       // puck restitution off the net frame
+  maxPuckSpeed: 160,
+  goalieRadius: 2.4,
+  goalieDownRadius: 3.0, // butterfly: wider, can't move sideways
+  goalieSpeed: 28,
+  goalieReaction: 0.15,  // s: lag in tracking the puck, and delay before committing to a dive
+  goalieDiveTrigger: 45, // puck speed that counts as a shot
+  goalieDiveRange: 30,  // only dives to shots this close to the goal line
+  goalieDiveSpeed: 30,
+  goalieDiveTime: 0.3,  // s of sideways slide
+  goalieDownTime: 0.75, // s spent down before recovering
+  goalieBounce: 0.35,   // restitution off the goalie (rebounds)
 
   // Checking
   checkSpeed: 22,     // closing speed that knocks the puck off a carrier

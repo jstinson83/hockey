@@ -7,6 +7,7 @@ TypeScript + Vite + Canvas 2D. Local vs. AI and local 1v1 (two gamepads).
 
     npm install
     npm run dev      # http://localhost:5173
+    npm test         # sim unit tests (vitest)
     npm run build    # typecheck + production bundle in dist/
 
 Controls: P1 arrows + Space (or gamepad 1), P2 gamepad 2 only.
@@ -19,6 +20,9 @@ Browsers only report a gamepad after a button press on it.
 - `src/sim.ts` - game state and the fixed-timestep `step()`. Keep it
   deterministic (no `Math.random`, no wall-clock reads) so replays, tests and
   rollback netcode stay possible. Tuning constants live in `TUNING`.
+- `src/sim.ts` also owns the game flow (faceoff -> play -> goal -> faceoff, 3x2:00 periods,
+  sudden-death overtime, final) and the goalies: physical blockers with a reaction delay and a
+  butterfly dive, so saves come from collisions and are tunable via `TUNING.goalie*`.
 - `src/sim-constants.ts` - rink dimensions and every feel-related `TUNING` value.
 - `src/collide.ts` - circle-vs-boards (rounded rink) and circle-vs-circle. No physics
   engine on purpose: arcade feel and determinism matter more than realism.

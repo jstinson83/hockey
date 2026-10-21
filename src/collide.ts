@@ -1,4 +1,4 @@
-import { RINK } from './sim-constants';
+import { GOAL, RINK, TUNING } from './sim-constants';
 
 export interface Contact {
   nx: number; // unit normal pointing from the wall into the rink
@@ -78,4 +78,88 @@ export function collideCircles(a: Body, b: Body, ra: number, rb: number, restitu
   b.vx += j * nx;
   b.vy += j * ny;
   return closing;
+}
+
+/**
+ * Circle vs. an immovable (or externally driven) circle, e.g. a goalie. Pushes
+ * `b` out and reflects its velocity relative to the other body.
+ */
+export function collideStatic(
+  b: Body, rb: number, o: Body, ro: number, restitution: number,
+): boolean {
+  const dx = b.x - o.x;
+  const dy = b.y - o.y;
+  const dist = Math.hypot(dx, dy);
+  const minDist = rb + ro;
+  if (dist >= minDist || dist === 0) return false;
+  const nx = dx / dist;
+  const ny = dy / dist;
+  b.x += nx * (minDist - dist);
+  b.y += ny * (minDist - dist);
+  const rel = (b.vx - o.vx) * nx + (b.vy - o.vy) * ny;
+  if (rel < 0) {
+    b.vx -= (1 + restitution) * rel * nx;
+    b.vy -= (1 + restitution) * rel * ny;
+  }
+  return true;
+}
+
+/** A net: opening on the goal line, extending `dir` (-1 toward y=0, +1 toward y=h) by GOAL.depth. */
+export interface Net {
+  gy: number;
+  dir: -1 | 1;
+  x0: number;
+  x1: number;
+  backY: number;
+}
+
+function makeNet(gy: number, dir: -1 | 1): Net {
+  return { gy, dir, x0: RINK.w / 2 - GOAL.width / 2, x1: RINK.w / 2 + GOAL.width / 2, backY: gy + dir * GOAL.depth };
+}
+
+/** [0] is the far (top) net, [1] the near (bottom) net. */
+export const NETS: [Net, Net] = [makeNet(GOAL.line, -1), makeNet(RINK.h - GOAL.line, 1)];
+
+/** Circle vs. one segment with a thickness; resolves the overlap and reflects velocity. */
+function collideSegment(
+  b: Body, r: number, ax: number, ay: number, bx: number, by: number, thickness: number, restitution: number,
+): void {
+  const sx = bx - ax;
+  const sy = by - ay;
+  const len2 = sx * sx + sy * sy;
+  const tt = len2 === 0 ? 0 : Math.min(Math.max(((b.x - ax) * sx + (b.y - ay) * sy) / len2, 0), 1);
+  const px = ax + sx * tt;
+  const py = ay + sy * tt;
+  let dx = b.x - px;
+  let dy = b.y - py;
+  const dist = Math.hypot(dx, dy);
+  const minDist = r + thickness;
+  if (dist >= minDist) return;
+  if (dist === 0) {
+    dx = -sy;
+    dy = sx;
+  }
+  const d = Math.hypot(dx, dy) || 1;
+  const nx = dx / d;
+  const ny = dy / d;
+  b.x += nx * (minDist - dist);
+  b.y += ny * (minDist - dist);
+  const vn = b.vx * nx + b.vy * ny;
+  if (vn < 0) {
+    b.vx -= (1 + restitution) * vn * nx;
+    b.vy -= (1 + restitution) * vn * ny;
+  }
+}
+
+/**
+ * Circle vs. a net's frame (two sides and the back, thickened by the post
+ * radius). `door` also closes the mouth: skaters, and a puck they carry, can't
+ * enter the net; a loose puck can.
+ */
+export function collideNet(b: Body, r: number, net: Net, restitution: number, door: boolean): void {
+  const post = TUNING.postRadius;
+  collideSegment(b, r, net.x0, net.gy, net.x0, net.backY, post, restitution);
+  collideSegment(b, r, net.x0, net.backY, net.x1, net.backY, post, restitution);
+  collideSegment(b, r, net.x1, net.backY, net.x1, net.gy, post, restitution);
+  if (door) collideSegment(b, r, net.x0, net.gy, net.x1, net.gy, 0.3, restitution);
 }

@@ -1,6 +1,6 @@
 import type { Camera } from './camera';
-import { FACEOFF, GOAL, RINK, TUNING, VIEW } from './sim-constants';
-import type { World } from './sim';
+import { FACEOFF, GAME, GOAL, RINK, TEAM_COLORS, TEAM_NAMES, TUNING, VIEW } from './sim-constants';
+import { goalieRadius, type Goalie, type World } from './sim';
 
 const S = VIEW.pxPerUnit;
 const T = VIEW.tilt;
@@ -77,6 +77,7 @@ export function render(ctx: CanvasRenderingContext2D, world: World, cam: Camera)
 
   ctx.setTransform(pxScale, 0, 0, pxScale, 0, 0);
   drawOffscreenArrows(ctx, world, view);
+  drawHud(ctx, world);
 }
 
 // ---------------------------------------------------------------- baking
@@ -436,6 +437,7 @@ function drawEntities(ctx: CanvasRenderingContext2D, world: World, cam: Camera):
   // Painter's algorithm: things lower on the ice are nearer the viewer.
   type Item = { y: number; draw: () => void };
   const items: Item[] = world.skaters.map((s) => ({ y: s.y, draw: () => drawSkater(ctx, cam, s) }));
+  for (const g of world.goalies) items.push({ y: g.y, draw: () => drawGoalie(ctx, cam, g) });
   items.push({ y: world.puck.y, draw: () => drawPuck(ctx, cam, world.puck) });
   // Far net is behind everything; near net's back is the closest thing on the ice.
   items.push({ y: GOAL.line - GOAL.depth, draw: () => drawNet(ctx, cam, GOAL.line, -1) });
@@ -606,4 +608,110 @@ function drawPuck(ctx: CanvasRenderingContext2D, cam: Camera, p: World['puck']):
   ctx.beginPath();
   ctx.ellipse(sx, sy - 1, TUNING.puckRadius * S, TUNING.puckRadius * S * T * 0.8, 0, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawGoalie(ctx: CanvasRenderingContext2D, cam: Camera, g: Goalie): void {
+  const r = goalieRadius(g);
+  const down = g.down > 0;
+  const { sx, sy } = project(cam, g.x, g.y);
+  shadow(ctx, cam, g.x, g.y, r);
+
+  // Same block language as the skaters, but wider, with white pads; squashed in the butterfly.
+  const w = r * 2 * S * 0.95;
+  const fullH = VIEW.bodyHeight * S * T + r * S * T;
+  const h = down ? fullH * 0.55 : fullH;
+  const top = sy - h + r * S * T * 0.5;
+  ctx.fillStyle = TEAM_COLORS[g.team];
+  ctx.beginPath();
+  ctx.roundRect(sx - w / 2, top, w, h, w * 0.25);
+  ctx.fill();
+  ctx.fillStyle = '#f2f4f7'; // pads
+  ctx.beginPath();
+  ctx.roundRect(sx - w / 2, top + h * 0.6, w, h * 0.4, w * 0.2);
+  ctx.fill();
+  ctx.fillStyle = '#f2f4f7'; // mask
+  ctx.beginPath();
+  ctx.arc(sx, top + h * 0.2, w * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(sx - w / 2, top, w, h, w * 0.25);
+  ctx.stroke();
+}
+
+// ---------------------------------------------------------------- HUD
+
+function periodLabel(world: World): string {
+  const g = world.game;
+  return g.overtime ? 'OT' : ['1ST', '2ND', '3RD'][g.period - 1] ?? `P${g.period}`;
+}
+
+function formatClock(seconds: number): string {
+  const s = Math.ceil(seconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function outlinedText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, fill: string): void {
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = 'rgba(10,12,16,0.85)';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = fill;
+  ctx.fillText(text, x, y);
+}
+
+function drawHud(ctx: CanvasRenderingContext2D, world: World): void {
+  const g = world.game;
+  const font = (px: number) => `800 ${px}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+
+  // Scoreboard
+  const bw = 330;
+  const bh = 42;
+  const bx = (VIEW.width - bw) / 2;
+  ctx.fillStyle = 'rgba(15,18,24,0.85)';
+  ctx.beginPath();
+  ctx.roundRect(bx, 8, bw, bh, 9);
+  ctx.fill();
+  ctx.textBaseline = 'middle';
+  ctx.font = font(20);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = TEAM_COLORS[0];
+  ctx.fillText(`${TEAM_NAMES[0]}  ${g.score[0]}`, bx + 125, 8 + bh / 2);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = TEAM_COLORS[1];
+  ctx.fillText(`${g.score[1]}  ${TEAM_NAMES[1]}`, bx + bw - 125, 8 + bh / 2);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f2f4f7';
+  ctx.font = font(18);
+  ctx.fillText(formatClock(g.clock), VIEW.width / 2, 8 + 15);
+  ctx.font = font(11);
+  ctx.fillStyle = '#9aa3ad';
+  ctx.fillText(periodLabel(world), VIEW.width / 2, 8 + 33);
+
+  const cx = VIEW.width / 2;
+  const cy = VIEW.height / 2 - 40;
+  if (g.phase === 'goal' && g.lastScorer !== null) {
+    ctx.font = font(64);
+    outlinedText(ctx, 'GOAL!', cx, cy, TEAM_COLORS[g.lastScorer]);
+    ctx.font = font(22);
+    outlinedText(ctx, `${TEAM_NAMES[g.lastScorer]} SCORES`, cx, cy + 44, '#f2f4f7');
+  } else if (g.phase === 'faceoff') {
+    ctx.font = font(30);
+    const fresh = g.clock === (g.overtime ? GAME.overtimeSeconds : GAME.periodSeconds);
+    outlinedText(ctx, fresh ? `${periodLabel(world)} PERIOD` : 'FACEOFF', cx, cy, '#f2f4f7');
+  } else if (g.phase === 'end') {
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 0, VIEW.width, VIEW.height);
+    const [a, b] = g.score;
+    ctx.font = font(54);
+    outlinedText(ctx, 'FINAL', cx, cy - 20, '#f2f4f7');
+    ctx.font = font(30);
+    if (a === b) outlinedText(ctx, `TIE  ${a} - ${b}`, cx, cy + 36, '#f2f4f7');
+    else outlinedText(ctx, `${TEAM_NAMES[a > b ? 0 : 1]} WINS  ${Math.max(a, b)} - ${Math.min(a, b)}`, cx, cy + 36, TEAM_COLORS[a > b ? 0 : 1]);
+    ctx.font = font(16);
+    outlinedText(ctx, 'Press R for a new game', cx, cy + 82, '#c8ced6');
+  }
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
 }
