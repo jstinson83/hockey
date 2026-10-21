@@ -40,3 +40,13 @@ function frame(now: number): void {
 }
 
 requestAnimationFrame(frame);
+
+// Dev-only handle so headless checks can pose the world.
+if (import.meta.env.DEV) {
+  Object.assign(window, {
+    hockey: {
+      get world() { return world; },
+      get camera() { return camera; },
+    },
+  });
+}

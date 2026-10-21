@@ -2,10 +2,10 @@
 export const RINK = { w: 85, h: 200, corner: 28 };
 
 /** Goal geometry. Nets sit behind the goal line, centred on the rink. Oversized vs. the real thing on purpose. */
-export const GOAL = { line: 11, width: 14, depth: 6, height: 4, crease: 9 };
+export const GOAL = { line: 11, width: 14, depth: 6, height: 4, crease: 12 };
 
 /** Faceoff spots sit this far either side of the centre line. */
-export const FACEOFF = { dx: 22, radius: 15, endZoneFromGoalLine: 20, neutralFromBlueLine: 5, blueLine: 25 };
+export const FACEOFF = { dx: 22, radius: 14, endZoneFromGoalLine: 19, neutralFromBlueLine: 5, blueLine: 28 };
 
 /** Everything feel-related. A future dev panel will edit this object live. */
 export const TUNING = {
@@ -39,14 +39,16 @@ export const TUNING = {
 export const VIEW = {
   width: 720,         // logical canvas units, 3:2 like the Dragonfly's screen; scaled to fit the window
   height: 480,
-  pxPerUnit: 7.7,     // horizontal scale; the full rink width (plus boards) stays on screen
+  pxPerUnit: 7.0,     // horizontal scale; the full rink width (plus boards) stays on screen, with room for stands
   tilt: 0.8,          // vertical foreshortening (1 = straight top-down, lower = flatter / more angled)
   boardThickness: 2.2, // world units, outside the ice
-  boardHeight: 14,    // px the dasher boards rise
-  glassHeight: 13,    // px of glass above the boards
+  boardHeight: 17,    // px the dasher boards rise
+  glassHeight: 20,    // px of glass above the boards
   arrowMargin: 20,    // px from the screen edge for off-screen skater arrows
   bodyHeight: 5,      // how tall skaters stand above their shadow, in world units
   followRate: 5,      // camera catch-up speed (higher = snappier)
   lookahead: 0.35,    // seconds of puck velocity the camera leads by
-  endOverscan: 8,     // how far past the end boards the camera may show
+  endOverscan: 20,    // how far past the end boards the camera may show (the crowd lives there)
+  arenaPad: 26,       // world units of arena baked beyond each end (>= endOverscan)
+  perspective: 0.0016, // horizontal spread per px of height; shows the inner face of the side walls
 };
