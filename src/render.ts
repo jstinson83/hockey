@@ -34,6 +34,37 @@ export function render(ctx: CanvasRenderingContext2D, world: World, cam: Camera)
   drawWalls(ctx, cam, 'far'); // behind the action
   drawEntities(ctx, world, cam);
   drawWalls(ctx, cam, 'near'); // in front of the action
+  drawOffscreenArrows(ctx, world, cam);
+}
+
+/**
+ * The camera follows the puck, so a skater can end up off-screen. Mark where
+ * they are with an arrow on the edge nearest them (the full rink width is
+ * always visible, so only top/bottom are possible). Once the AI teammates
+ * exist this should be limited to the skater each human controls.
+ */
+function drawOffscreenArrows(ctx: CanvasRenderingContext2D, world: World, cam: Camera): void {
+  const bodyPx = (VIEW.bodyHeight + TUNING.skaterRadius) * S * T;
+  const m = VIEW.arrowMargin;
+  for (const s of world.skaters) {
+    const { sx, sy } = project(cam, s.x, s.y);
+    const dir = sy < 0 ? -1 : sy - bodyPx > VIEW.height ? 1 : 0;
+    if (dir === 0) continue;
+
+    const ay = dir < 0 ? m : VIEW.height - m;
+    const ax = Math.min(Math.max(sx, m), VIEW.width - m);
+    const size = 11;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay + dir * size);
+    ctx.lineTo(ax - size, ay - dir * size * 0.6);
+    ctx.lineTo(ax + size, ay - dir * size * 0.6);
+    ctx.closePath();
+    ctx.fillStyle = s.color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
 }
 
 // ---------------------------------------------------------------- ice
