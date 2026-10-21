@@ -1,4 +1,4 @@
-import { P1_KEYS, P2_KEYS, readIntent } from './input';
+import { P1_KEYS, readIntent } from './input';
 import { render, setupCanvas } from './render';
 import { createWorld, step } from './sim';
 
@@ -18,7 +18,7 @@ function frame(now: number): void {
   last = now;
 
   while (acc >= DT) {
-    step(world, [readIntent(P1_KEYS, 0), readIntent(P2_KEYS, 1)], DT);
+    step(world, [readIntent(P1_KEYS, 0), readIntent(null, 1)], DT);
     acc -= DT;
   }
 

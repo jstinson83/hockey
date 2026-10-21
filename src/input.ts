@@ -8,8 +8,8 @@ export interface KeyMap {
   up: string; down: string; left: string; right: string; action: string;
 }
 
-export const P1_KEYS: KeyMap = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', action: 'Space' };
-export const P2_KEYS: KeyMap = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', action: 'Enter' };
+/** P1 plays on the keyboard; P2 is gamepad-only (nobody shares one keyboard). */
+export const P1_KEYS: KeyMap = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', action: 'Space' };
 
 const held = new Set<string>();
 addEventListener('keydown', (e) => {
@@ -21,11 +21,11 @@ addEventListener('blur', () => held.clear());
 
 const DEADZONE = 0.2;
 
-/** Keyboard first; falls back to the gamepad at `padIndex` if the keys are idle. */
-export function readIntent(keys: KeyMap, padIndex: number): Intent {
-  let x = (held.has(keys.right) ? 1 : 0) - (held.has(keys.left) ? 1 : 0);
-  let y = (held.has(keys.down) ? 1 : 0) - (held.has(keys.up) ? 1 : 0);
-  let action = held.has(keys.action);
+/** Keyboard first (if the player has keys); falls back to the gamepad at `padIndex` if idle. */
+export function readIntent(keys: KeyMap | null, padIndex: number): Intent {
+  let x = keys ? (held.has(keys.right) ? 1 : 0) - (held.has(keys.left) ? 1 : 0) : 0;
+  let y = keys ? (held.has(keys.down) ? 1 : 0) - (held.has(keys.up) ? 1 : 0) : 0;
+  let action = keys ? held.has(keys.action) : false;
 
   const pad = navigator.getGamepads()[padIndex];
   if (pad) {
