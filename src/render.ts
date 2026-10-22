@@ -587,15 +587,6 @@ function drawSkater(ctx: CanvasRenderingContext2D, cam: Camera, s: World['skater
   ctx.stroke();
   ctx.restore();
 
-  // Check window: an orange ring on the ice
-  if (s.checking > 0) {
-    ctx.strokeStyle = '#ff9a1f';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(sx, sy, (r + 0.8) * S, (r + 0.8) * S * T, 0, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
   // Facing tick on the ground, projected so it reads in the tilted view.
   ctx.strokeStyle = '#000';
   ctx.lineWidth = 2;
@@ -726,6 +717,24 @@ function drawHud(ctx: CanvasRenderingContext2D, world: World): void {
     ctx.font = font(16);
     outlinedText(ctx, 'Press R for a new game', cx, cy + 82, '#c8ced6');
   }
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+/** Dim the frozen game and show the pause menu. */
+export function drawPause(ctx: CanvasRenderingContext2D): void {
+  ctx.setTransform(pxScale, 0, 0, pxScale, 0, 0);
+  ctx.fillStyle = 'rgba(8,10,14,0.62)';
+  ctx.fillRect(0, 0, VIEW.width, VIEW.height);
+  const cx = VIEW.width / 2;
+  const cy = VIEW.height / 2 - 30;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '800 56px system-ui, -apple-system, "Segoe UI", sans-serif';
+  outlinedText(ctx, 'PAUSED', cx, cy, '#f2f4f7');
+  ctx.font = '700 18px system-ui, -apple-system, "Segoe UI", sans-serif';
+  const lines = ['Resume: P / Esc / Options', 'Restart: R', 'Fullscreen: F'];
+  lines.forEach((l, i) => outlinedText(ctx, l, cx, cy + 52 + i * 28, '#c8ced6'));
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
 }

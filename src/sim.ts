@@ -444,17 +444,20 @@ function burst(s: Skater, intent: Intent | undefined): void {
  * Aim assist gets the puck to the net; the goalie decides whether it goes in.
  */
 function shotAngle(world: World, s: Skater, charge01: number): number {
+  // Aim from where the puck actually leaves (the carry point), not the skater's centre:
+  // on a steep angle the 3.4-unit carry offset is several units of error at the net.
+  const o = world.puck;
   let angle = s.facing;
   const net = attackedNet(s.team);
-  const dy = net.gy - s.y;
-  const inFront = (s.y - net.gy) * -net.dir > 0;
-  const toNet = Math.atan2(dy, RINK.w / 2 - s.x);
+  const dy = net.gy - o.y;
+  const inFront = (o.y - net.gy) * -net.dir > 0;
+  const toNet = Math.atan2(dy, RINK.w / 2 - o.x);
   const fy = Math.sin(s.facing);
   if (inFront && Math.abs(wrapAngle(toNet - s.facing)) < TUNING.aimAssistCone && fy * dy > 0) {
-    const xCross = s.x + Math.cos(s.facing) * (dy / fy);
+    const xCross = o.x + Math.cos(s.facing) * (dy / fy);
     const reach = GOAL.width / 2 - TUNING.aimInset;
     const targetX = Math.min(Math.max(xCross, RINK.w / 2 - reach), RINK.w / 2 + reach);
-    const target = Math.atan2(dy, targetX - s.x);
+    const target = Math.atan2(dy, targetX - o.x);
     angle += wrapAngle(target - s.facing) * TUNING.aimAssist;
   }
   const spread = TUNING.wristSpread + (TUNING.slapSpread - TUNING.wristSpread) * charge01;

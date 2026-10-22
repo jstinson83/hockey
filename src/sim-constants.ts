@@ -42,11 +42,11 @@ export const TUNING = {
   wristSpeed: 70,
   slapSpeed: 130,
   chargeTime: 0.6,    // s of holding for a full slapshot
-  aimAssistCone: 0.96, // rad (~55deg): shots within this of the net get pulled toward it
-  aimAssist: 0.85,    // how far toward the (post-clamped) net a shot is pulled, 0..1
+  aimAssistCone: 1.4, // rad (~80deg): shots within this of the net get pulled toward it
+  aimAssist: 1.0,     // how far toward the (post-clamped) net a shot is pulled, 0..1
   aimInset: 1.5,      // assisted shots aim this far inside the posts
-  wristSpread: 0.05,  // rad of random error per shot
-  slapSpread: 0.09,   // slapshots are faster but sloppier
+  wristSpread: 0.035,  // rad of random error per shot
+  slapSpread: 0.07,   // slapshots are faster but sloppier
 
   // Passing
   passSpeed: 55,

@@ -14,7 +14,8 @@ Controls: P1 arrows + Space (shoot) + Z (pass), or gamepad 1; P2 gamepad 2 only.
 PS5 pad: X = shoot, Square = pass. With the puck, tap shoot = wrist shot, hold = charge a
 slapshot (aim assist pulls shots toward the net; spread keeps them from being automatic).
 Without the puck, tapping shoot is a speed burst (stacks to a cap) and opens a short
-bodycheck window. R resets.
+bodycheck window. P / Esc / the Options button pauses (it also pauses when the tab loses
+focus). R resets, F toggles fullscreen.
 Browsers only report a gamepad after a button press on it.
 
 ## Layout

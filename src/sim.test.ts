@@ -266,6 +266,11 @@ describe('shots', () => {
     expect(x).toBeLessThan(unassisted - 3); // pulled substantially toward the net
   });
 
+  it('assists steep-angle shots from beside the net, even when facing straight up the ice', () => {
+    const w = release(4, CX + 25, 25, -Math.PI / 2); // near the goal line, well off to the side
+    expect(Math.abs(crossX(w) - CX)).toBeLessThan(GOAL.width / 2 + 2);
+  });
+
   it('does not touch the aim of a shot facing away from the net', () => {
     const w = release(3, CX, 80, Math.PI / 2); // facing down the ice, away from red's target
     expect(Math.atan2(w.puck.vy, w.puck.vx)).toBeGreaterThan(Math.PI / 2 - TUNING.wristSpread - 0.01);
