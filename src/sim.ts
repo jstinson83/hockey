@@ -64,7 +64,8 @@ export interface World {
   game: Game;
   rng: number; // PRNG state; shot spread and AI decisions draw from it, keeping the sim deterministic per seed
   humans: [boolean, boolean]; // does a person drive each team's controlled skater? (false = AI plays that team)
-  controlled: [number, number]; // skater index each team's human controls; follows the puck
+  controlled: [number, number]; // skater index each team's human controls; changes only when they switch
+  switchHeld: [boolean, boolean]; // previous frame's switch button, for press detection
 }
 
 const ROLES: Role[] = ['C', 'L', 'R'];
@@ -105,6 +106,7 @@ export function createWorld(seed = 1, opts: { perTeam?: number } = {}): World {
     rng: seed | 0,
     humans: [true, true],
     controlled: [0, perTeam],
+    switchHeld: [false, false],
   };
   placeForFaceoff(world);
   return world;
@@ -162,7 +164,7 @@ export function step(world: World, human: Intent[], dt: number): void {
   const { skaters, goalies, game } = world;
   const controllable = game.phase === 'play' || game.phase === 'goal';
 
-  updateControlled(world);
+  updateControlled(world, human);
   const intents: (Intent | undefined)[] = skaters.map((s, i) =>
     world.humans[s.team] && world.controlled[s.team] === i ? human[s.team] : aiIntent(world, i, dt),
   );
@@ -206,36 +208,34 @@ export function step(world: World, human: Intent[], dt: number): void {
 }
 
 /**
- * Each human controls the puck carrier if their team has it, else the teammate nearest the
- * puck (with a little hysteresis so control doesn't flicker). The held-button state moves
- * with control so a held shoot button doesn't read as a fresh tap on the new skater.
+ * Control only changes when a human presses switch: it moves to the teammate nearest the
+ * puck (never auto-switching, so the skater you're driving doesn't change under you). The
+ * held-button state moves with control so a held shoot button doesn't read as a fresh tap
+ * on the new skater.
  */
-function updateControlled(world: World): void {
+function updateControlled(world: World, human: Intent[]): void {
   const { skaters, puck } = world;
   for (const team of [0, 1] as const) {
+    const pressed = !!human[team]?.switchPlayer;
+    const edge = pressed && !world.switchHeld[team];
+    world.switchHeld[team] = pressed;
+    if (!edge || !world.humans[team]) continue;
+
     const cur = world.controlled[team];
-    let next = cur;
-    if (puck.carrier >= 0 && skaters[puck.carrier].team === team) {
-      next = puck.carrier;
-    } else {
-      const px = puck.x + puck.vx * 0.2;
-      const py = puck.y + puck.vy * 0.2;
-      let best = cur;
-      let bd = Math.hypot(skaters[cur].x - px, skaters[cur].y - py) - 3; // stay unless clearly worse
-      skaters.forEach((s, j) => {
-        if (s.team !== team) return;
-        const d = Math.hypot(s.x - px, s.y - py);
-        if (d < bd) { bd = d; best = j; }
-      });
-      next = best;
-    }
-    if (next !== cur) {
-      const a = skaters[cur];
-      const b = skaters[next];
-      b.actionHeld = a.actionHeld; b.passHeld = a.passHeld; b.pressedWithoutPuck = a.pressedWithoutPuck;
-      a.actionHeld = false; a.passHeld = false; a.pressedWithoutPuck = false; a.charge = 0;
-      world.controlled[team] = next;
-    }
+    let best = cur;
+    let bd = Infinity;
+    skaters.forEach((s, j) => {
+      if (s.team !== team || j === cur) return;
+      const d = Math.hypot(s.x - puck.x, s.y - puck.y);
+      if (d < bd) { bd = d; best = j; }
+    });
+    if (best === cur) continue;
+
+    const a = skaters[cur];
+    const b = skaters[best];
+    b.actionHeld = a.actionHeld; b.passHeld = a.passHeld; b.pressedWithoutPuck = a.pressedWithoutPuck;
+    a.actionHeld = false; a.passHeld = false; a.pressedWithoutPuck = false; a.charge = 0;
+    world.controlled[team] = best;
   }
 }
 
