@@ -1,4 +1,4 @@
-import type { AiState, Breakout, Role } from './ai';
+import type { AiState, Breakout, Neutral, Role } from './ai';
 import type { Team } from './sim-constants';
 
 export interface Skater {
@@ -59,5 +59,6 @@ export interface World {
   switchHeld: [boolean, boolean]; // previous frame's pass button per team, for press detection
   switchRank: [number, number];   // rank (by distance to the puck) the last switch chose
   switchSince: [number, number];  // s since each team's last switch
+  neutral: [Neutral, Neutral];    // each team's plan for defending the neutral zone (AI skaters only)
   breakout: [Breakout, Breakout]; // each team's plan for getting out of its own end (AI skaters only)
 }

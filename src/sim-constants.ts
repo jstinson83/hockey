@@ -20,7 +20,7 @@ export const TUNING = {
   accel: 90,          // units/s^2 while pushing a direction
   maxSpeed: 38,       // units/s
   friction: 0.6,      // fraction of velocity kept after 1s of coasting
-  skaterRadius: 2.5,
+  skaterRadius: 2.375, // 5% under the original 2.5
   skaterBounce: 0.5,  // restitution between skaters
   wallBounce: 0.1,    // skaters mostly stop on the boards
 
@@ -83,6 +83,10 @@ export const TUNING = {
   aiPassCooldown: 0.9,  // s between passes
   aiPressure: 9,        // an opponent this close means the carrier is under pressure
   aiBreakoutDepth: 40,  // a carrier this far inside its own half (from centre ice) is breaking out
+  aiDefenceGap: 0.55,   // defence stand this fraction of the way from their net to the puck (14..55 units out)
+  aiCentreGap: 0.75,    // the centre stands this fraction of the way (20..75 units out)
+  aiTrapLine: 8,        // the trap's wall stands this far on our side of centre ice
+  aiPressGap: 24,       // under the press, defence stand this far behind the puck carrier
   aiBurstCooldown: 0.55,
   aiCheckChance: 0.7,   // per decision, when within reach of the carrier
 

@@ -28,6 +28,18 @@ export type Role = 'C' | 'L' | 'R' | 'LD' | 'RD';
 export const BREAKOUTS = ['carry', 'boards', 'swing', 'stretch'] as const;
 export type Breakout = (typeof BREAKOUTS)[number];
 
+/**
+ * How a team defends the neutral zone, i.e. while the other team has the puck anywhere outside
+ * our own end (inside it the team always collapses toward the slot):
+ *  - man:   no plan; the nearest skater presses and the rest mark (the original behaviour).
+ *  - trap:  wait. Four skaters form a wall just on our side of centre ice and the centre angles the
+ *           carrier toward the boards; nobody forechecks, the wall engages whoever reaches it.
+ *  - press: attack. The centre and the carrier-side wing go straight at the puck, the far wing
+ *           covers the middle and the defence step up behind them.
+ */
+export const NEUTRALS = ['man', 'trap', 'press'] as const;
+export type Neutral = (typeof NEUTRALS)[number];
+
 export interface AiState {
   think: number;         // s until the next decision
   shotHold: number;      // s left holding the shoot button on a shot
@@ -158,20 +170,59 @@ function supportAnchor(world: World, s: Skater, carrier: Point): Point {
   return keepIn(CX + side * 22, carrier.y + fwd * 6);
 }
 
-/** Where the defending roles stand when they have the puck: C goal-side of it, wings on opponents. */
+/**
+ * Where the defending roles stand when they don't have the puck. Defence and the centre hold a
+ * line on the goal-to-puck axis that moves up with the puck (defence in front, centre higher and
+ * central), so the team collapses on the net only when the puck is already close to it. Wings
+ * mark opponents.
+ */
 function defendAnchor(world: World, s: Skater, puck: Point, carrierIdx: number): Point {
   const own = defendedNet(s.team);
   const goal = { x: CX, y: own.gy };
-  if (isDefence(s.role)) return keepIn(CX + sideOf(s.role) * 9, own.gy - own.dir * 14); // guard the slot, either side of the net
-  if (s.role === 'C') {
+  if (isDefence(s.role) || s.role === 'C') {
     const d = dist(puck, goal) || 1;
-    return keepIn(goal.x + ((puck.x - goal.x) / d) * 16, goal.y + ((puck.y - goal.y) / d) * 16);
+    const depth = isDefence(s.role)
+      ? clamp(d * TUNING.aiDefenceGap, GOAL.crease + 12, 55)
+      : clamp(d * TUNING.aiCentreGap, GOAL.crease + 20, 75);
+    const x = goal.x + ((puck.x - goal.x) / d) * depth + sideOf(s.role) * 10;
+    return keepIn(x, goal.y + ((puck.y - goal.y) / d) * depth);
   }
   const marks = world.skaters.filter((o, j) => o.team !== s.team && j !== carrierIdx).sort((a, b) => a.x - b.x);
   const mark = s.role === 'L' ? marks[0] : marks[marks.length - 1];
   if (!mark) return keepIn(CX + (s.role === 'L' ? -16 : 16), own.gy - own.dir * 20);
   const d = dist(mark, goal) || 1;
   return keepIn(mark.x + ((goal.x - mark.x) / d) * 5, mark.y + ((goal.y - mark.y) / d) * 5);
+}
+
+/** Does the neutral-zone plan run? The puck is out of our end (a little short of centre ice counts as out). */
+function neutralActive(world: World, team: Skater['team'], p: Point): boolean {
+  return world.neutral[team] !== 'man' && progress(team, p.y) >= -(TUNING.aiTrapLine + 2);
+}
+
+/** Where a skater stands (and whether it goes for the carrier) under a neutral-zone plan. */
+function neutralAnchor(world: World, s: Skater, carrier: Point, carrierIdx: number): { target: Point; press: boolean } {
+  const fwd = attackedNet(s.team).dir;
+  const plan = world.neutral[s.team];
+  const cSide = carrier.x < CX ? 'L' : 'R';
+  const onCarrier = { x: carrier.x + (carrierIdx >= 0 ? world.skaters[carrierIdx].vx * 0.3 : 0), y: carrier.y + (carrierIdx >= 0 ? world.skaters[carrierIdx].vy * 0.3 : 0) };
+  if (plan === 'press') {
+    if (s.role === 'C' || s.role === cSide) return { target: routeAroundNet(s, onCarrier), press: true };
+    if (isDefence(s.role)) return { target: keepIn(CX + sideOf(s.role) * 14, carrier.y - fwd * TUNING.aiPressGap), press: false };
+    return { target: keepIn(CX, carrier.y - fwd * 14), press: false };
+  }
+  // trap
+  const wallY = MID - fwd * TUNING.aiTrapLine;
+  if (s.role === 'C') {
+    // Angle the carrier: stand between it and the middle of the ice, a little on our side of it.
+    const t = keepIn(carrier.x + (CX - carrier.x) * 0.4, carrier.y - fwd * 8);
+    return { target: t, press: dist(s, carrier) < TUNING.aiPressure + 4 };
+  }
+  if (closestTo(world, s.team, carrier, false) === world.skaters.indexOf(s) && dist(s, carrier) < 14) {
+    return { target: routeAroundNet(s, onCarrier), press: true }; // the wall engages whoever reaches it
+  }
+  const slotX = s.role === 'L' ? 12 : s.role === 'LD' ? 31 : s.role === 'RD' ? 54 : 73;
+  const shade = clamp((carrier.x - CX) * 0.25, -8, 8);
+  return { target: keepIn(slotX + shade, wallY), press: false };
 }
 
 /**
@@ -383,10 +434,14 @@ function offPuckIntent(world: World, i: number): Intent {
       target = routeAroundNet(s, pred);
       chase = true;
     } else {
-      target = progress(s.team, puck.y) > 0 ? supportAnchor(world, s, puck) : defendAnchor(world, s, puck, -1);
+      target = progress(s.team, puck.y) > 0 ? supportAnchor(world, s, puck)
+        : neutralActive(world, s.team, puck) ? neutralAnchor(world, s, puck, -1).target
+        : defendAnchor(world, s, puck, -1);
     }
   } else if (mineHas) {
     target = supportAnchor(world, s, carrier);
+  } else if (neutralActive(world, s.team, carrier)) {
+    ({ target, press } = neutralAnchor(world, s, carrier, puck.carrier));
   } else if (closestTo(world, s.team, carrier, false) === i) {
     target = routeAroundNet(s, { x: carrier.x + carrier.vx * 0.3, y: carrier.y + carrier.vy * 0.3 });
     press = true;
