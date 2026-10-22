@@ -10,11 +10,33 @@
       body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
       canvas { display: block; background: #1a1d22; } /* size is set from JS to fit the window at 3:2 */
       #hint { height: 28px; line-height: 28px; }
+
+      #tuning { position: fixed; top: 8px; right: 8px; bottom: 36px; width: min(380px, 94vw); z-index: 10; display: flex; flex-direction: column;
+        background: rgba(14,16,22,0.94); border: 1px solid #2c313b; border-radius: 10px; font-size: 12px; color: #dfe3ea; overflow: hidden; }
+      #tuning[hidden] { display: none; }
+      #tuning header { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid #2c313b; }
+      #tuning header .grow { flex: 1; }
+      #tuning .pause { white-space: nowrap; display: flex; align-items: center; gap: 4px; color: #9aa3ad; font-size: 11px; }
+      #tuning button { white-space: nowrap; background: #262b35; color: #dfe3ea; border: 1px solid #3a414d; border-radius: 6px; padding: 3px 8px; font: inherit; cursor: pointer; }
+      #tuning button:hover { background: #313845; }
+      #tuning .body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0; }
+      #tuning details { border-bottom: 1px solid #20242c; }
+      #tuning summary { cursor: pointer; padding: 7px 10px; display: flex; gap: 8px; align-items: baseline; font-weight: 700; }
+      #tuning summary em { color: #ff9a1f; font-style: normal; font-weight: 400; font-size: 11px; }
+      #tuning .row { display: grid; grid-template-columns: 1fr 96px 62px 20px; gap: 6px; align-items: center; padding: 3px 10px; }
+      #tuning .row.changed .name { color: #ff9a1f; }
+      #tuning .name small { display: block; color: #6f7886; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #tuning input[type=range] { width: 100%; }
+      #tuning input[type=number] { width: 100%; background: #1a1e26; color: inherit; border: 1px solid #3a414d; border-radius: 4px; padding: 2px 4px; font: inherit; }
+      #tuning .undo { padding: 0 4px; line-height: 18px; }
+      #tuning textarea { margin: 6px 10px; background: #1a1e26; color: #dfe3ea; border: 1px solid #3a414d; border-radius: 6px; font: 11px ui-monospace, monospace; resize: vertical; }
+      #tuning footer { padding: 6px 10px; border-top: 1px solid #2c313b; color: #7d8696; font-size: 11px; }
     </style>
   </head>
   <body>
     <canvas id="game"></canvas>
-    <div id="hint">P1: arrows + Space (shoot / burst &amp; check) + Z (pass / switch player) or pad 1: X shoot, Square pass / switch player · P2: pad 2 (else AI) · P / Esc / Options = pause · D = AI demo · R = reset · F = fullscreen</div>
+    <aside id="tuning" hidden></aside>
+    <div id="hint">P1: arrows + Space (shoot / burst &amp; check) + Z (pass / switch player) or pad 1: X shoot, Square pass / switch player · P2: pad 2 (else AI) · P / Esc / Options = pause · D = AI demo · R = reset · F = fullscreen · T = tuning</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

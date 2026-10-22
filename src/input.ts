@@ -13,7 +13,15 @@ export interface KeyMap {
 export const P1_KEYS: KeyMap = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', action: 'Space', pass: 'KeyZ' };
 
 const held = new Set<string>();
+
+/** Typing into a tuning field shouldn't drive the skater (or trigger R / P / F). */
+export function isTextEntry(target: EventTarget | null): boolean {
+  if (target instanceof HTMLTextAreaElement) return true;
+  return target instanceof HTMLInputElement && (target.type === 'number' || target.type === 'text');
+}
+
 addEventListener('keydown', (e) => {
+  if (isTextEntry(e.target)) return;
   if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
   held.add(e.code);
 });
