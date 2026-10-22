@@ -1,7 +1,7 @@
 import { attackedNet, defendedNet, NETS } from './collide';
 import type { Intent } from './input';
 import { nextRandom } from './rng';
-import type { Skater, World } from './sim';
+import type { Skater, World } from './sim-types';
 import { GOAL, RINK, TUNING } from './sim-constants';
 
 /**
