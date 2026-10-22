@@ -301,10 +301,51 @@ describe('shots', () => {
   });
 });
 
+describe('5v5', () => {
+  it('is the default: C, two wings and two defence a side, all on the ice and apart at the faceoff', () => {
+    const w = createWorld(1);
+    expect(w.skaters.length).toBe(10);
+    for (const team of [0, 1] as const) {
+      expect(w.skaters.filter((s) => s.team === team).map((s) => s.role)).toEqual(['C', 'L', 'R', 'LD', 'RD']);
+    }
+    w.skaters.forEach((s, i) => {
+      expect(s.x).toBeGreaterThan(0); expect(s.x).toBeLessThan(RINK.w);
+      expect(s.y).toBeGreaterThan(0); expect(s.y).toBeLessThan(RINK.h);
+      w.skaters.slice(i + 1).forEach((o) => expect(Math.hypot(s.x - o.x, s.y - o.y)).toBeGreaterThan(2 * TUNING.skaterRadius));
+    });
+  });
+
+  it('defence hold the points when their team is set up in the offensive zone, and guard the slot without the puck', () => {
+    const w = createWorld(3);
+    w.humans = [false, false];
+    w.game.phase = 'play';
+    const red = w.skaters.map((s, i) => ({ s, i })).filter((o) => o.s.team === 0);
+    const carrier = red[0]; // red attacks up the ice (towards y = 0)
+    Object.assign(carrier.s, { x: CX, y: 30, vx: 0, vy: 0 });
+    w.puck.carrier = carrier.i;
+    w.skaters.filter((s) => s.team === 1).forEach((s) => { s.x = 8; s.y = 20; }); // out of the way
+    for (let i = 0; i < 180; i++) { step(w, [idle, idle], DT); Object.assign(carrier.s, { x: CX, y: 30, vx: 0, vy: 0 }); w.puck.carrier = carrier.i; }
+    const ld = red.find((o) => o.s.role === 'LD')!.s;
+    const rd = red.find((o) => o.s.role === 'RD')!.s;
+    expect(ld.y).toBeGreaterThan(30 + 10); expect(rd.y).toBeGreaterThan(30 + 10); // behind the carrier, out at the point
+    expect(ld.x).toBeLessThan(CX); expect(rd.x).toBeGreaterThan(CX);
+
+    // Blue has it up the ice: a red defender collapses to the slot in front of their own net (the bottom, y near RINK.h).
+    const blue = w.skaters.findIndex((s) => s.team === 1);
+    Object.assign(w.skaters[blue], { x: CX, y: 150, vx: 0, vy: 0 });
+    w.puck.carrier = blue;
+    for (let i = 0; i < 240; i++) { step(w, [idle, idle], DT); Object.assign(w.skaters[blue], { x: CX, y: 150, vx: 0, vy: 0 }); w.puck.carrier = blue; }
+    // (The nearest red skater presses the carrier, so at most one of the pair steps up; the other guards the slot.)
+    const guard = ld.y > rd.y ? ld : rd;
+    expect(guard.y).toBeGreaterThan(RINK.h - 40);
+    expect(Math.abs(guard.x - CX)).toBeLessThan(20);
+  });
+});
+
 describe('breakouts', () => {
   /** Red (attacking up the ice from y=200) with `carrier` on the puck deep in its own end, left of centre; blue far away. */
   const breakWorld = (plan: 'carry' | 'boards' | 'swing' | 'stretch', carrier: number): World => {
-    const w = createWorld(5, { breakout: [plan, 'carry'] });
+    const w = createWorld(5, { perTeam: 3, breakout: [plan, 'carry'] });
     w.humans = [false, false];
     w.game.phase = 'play';
     const spots = [[CX, 172], [CX - 20, 168], [CX + 20, 168]]; // C, L, R
@@ -474,7 +515,7 @@ describe('AI and control', () => {
 
   /** A 3v3 world with red's skaters at known distances from the puck: [0] nearest ... [2] farthest. */
   function switchWorld(): { w: World; red: number[] } {
-    const w = createWorld(1);
+    const w = createWorld(1, { perTeam: 3 });
     w.humans = [true, false];
     w.game.phase = 'play';
     w.puck.x = CX; w.puck.y = 100; w.puck.vx = w.puck.vy = 0;

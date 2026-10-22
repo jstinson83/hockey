@@ -26,7 +26,6 @@ No timeline or order within groups yet.
 - [ ] Strategies (tuning is only meaningful once there are several): breakouts are in; next offence (rush / cycle / shoot-first) and defence (man / zone / forecheck), then per-team selection and tuning them against each other
 - [ ] Cycling and set plays (the original AI idea)
 - [ ] Difficulty setting
-- [ ] 5v5
 - [ ] Less choppy AI possessions
 - [ ] Shot lab: try shots and the goalie without a full game (testing aid)
 

@@ -14,7 +14,7 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
 ## Decisions already made
 
 - Sim is deterministic and fixed-timestep, so online play stays possible later.
-- 3v3 rather than 5v5 for now; each human controls one skater per team.
+- 5v5 (C, L, R, LD, RD; `GAME.skatersPerTeam`); each human controls one skater per team.
 - Player switching is manual: the pass button without the puck, or automatic
   when a teammate picks the puck up.
 - Visual target is the NHL 94 look (oblique view, crowd, scratched ice).
@@ -29,7 +29,7 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
 - Nets, goals, physical goalies (reaction delay, butterfly dive), scoreboard,
   game flow (faceoff -> play -> goal -> faceoff, 3x2:00 periods, sudden-death
   overtime, final).
-- Skater AI: 3v3 teams, roles (C/L/R), carrier decisions, switching.
+- Skater AI: 5v5 teams, roles (C/L/R/LD/RD), carrier decisions, switching.
 - AI strategies, first slice: per-team breakout plans (`World.breakout`: carry / boards / swing /
   stretch) that change support anchors and the carrier's designated outlet pass while it is deep in
   its own end. Plans are data-ish switches inside `ai.ts`, picked by the player (B / N), not by the AI.

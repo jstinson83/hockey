@@ -11,8 +11,9 @@ export function placeForFaceoff(world: World): void {
   world.skaters.forEach((s) => {
     const k = slots[s.team]++;
     const sign = s.team === 0 ? 1 : -1; // red starts below centre, blue above
-    s.x = RINK.w / 2 + (k === 0 ? 0 : k === 1 ? -20 : 20);
-    s.y = mid + sign * (k === 0 ? 14 : 30);
+    // Slots: C, L, R, LD, RD (see ROLES in sim.ts); defence line up behind the forwards.
+    s.x = RINK.w / 2 + [0, -20, 20, -12, 12][k % 5];
+    s.y = mid + sign * [14, 30, 30, 46, 46][k % 5];
     s.vx = s.vy = 0;
     s.facing = s.team === 0 ? -Math.PI / 2 : Math.PI / 2;
     s.charge = 0;

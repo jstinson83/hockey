@@ -27,7 +27,7 @@ Browsers only report a gamepad after a button press on it.
 - `src/sim.ts` also owns the game flow (faceoff -> play -> goal -> faceoff, 3x2:00 periods,
   sudden-death overtime, final) and the goalies: physical blockers with a reaction delay and a
   butterfly dive, so saves come from collisions and are tunable via `TUNING.goalie*`.
-- `src/ai.ts` - skater AI (3v3 by default). Team plan (support / defend / chase / press anchors by
+- `src/ai.ts` - skater AI (5v5 by default: C, L, R, LD, RD). Team plan (support / defend / chase / press anchors by
   role: C, L, R), carrier decisions (shoot / pass / carry, a few times a second, seeded random), and
   steering that emits the same `Intent` a human would. Each human controls one skater per team
   (control changes only two ways: when a teammate picks up the puck you're switched to them, and the pass button without the puck switches to the teammate nearest it, or the next nearest if you already are); everyone else is AI. Blue is AI unless a second pad

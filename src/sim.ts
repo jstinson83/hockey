@@ -15,22 +15,22 @@ export type { Breakout };
 export { BREAKOUTS } from './ai';
 export type { Game, Goalie, Phase, Puck, Skater, World } from './sim-types';
 
-const ROLES: Role[] = ['C', 'L', 'R'];
+const ROLES: Role[] = ['C', 'L', 'R', 'LD', 'RD'];
 
 function makeSkater(team: Team, slot: number): Skater {
   return {
-    x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, facing: 0, team, role: ROLES[slot % 3], ai: newAi(),
+    x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, facing: 0, team, role: ROLES[slot % ROLES.length], ai: newAi(),
     charge: 0, actionHeld: false, passHeld: false, pressedWithoutPuck: false, lockout: 0,
     boost: 0, checking: 0, stun: 0, color: TEAM_COLORS[team],
   };
 }
 
 /**
- * A fresh game. `perTeam` skaters a side (3v3 by default); skaters[0..perTeam-1] are red,
+ * A fresh game. `perTeam` skaters a side (5v5 by default); skaters[0..perTeam-1] are red,
  * the rest blue, centre first. Both teams start human-driven; the caller sets `humans`.
  */
 export function createWorld(seed = 1, opts: { perTeam?: number; breakout?: [Breakout, Breakout] } = {}): World {
-  const perTeam = opts.perTeam ?? 3;
+  const perTeam = opts.perTeam ?? GAME.skatersPerTeam;
   const skaters: Skater[] = [];
   for (const team of [0, 1] as const) for (let k = 0; k < perTeam; k++) skaters.push(makeSkater(team, k));
   const world: World = {

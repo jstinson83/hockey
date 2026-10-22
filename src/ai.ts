@@ -15,7 +15,7 @@ import { GOAL, RINK, TUNING } from './sim-constants';
  * Everything is a pure function of the world (and its seeded RNG), so it stays deterministic.
  */
 
-export type Role = 'C' | 'L' | 'R';
+export type Role = 'C' | 'L' | 'R' | 'LD' | 'RD';
 
 /**
  * How a team gets the puck out of its own end (while its carrier is deep in it):
@@ -98,7 +98,8 @@ function keepIn(x: number, y: number): Point {
   return { x: px, y: py };
 }
 
-const sideOf = (role: Role): number => (role === 'L' ? -1 : role === 'R' ? 1 : 0);
+const sideOf = (role: Role): number => (role === 'L' || role === 'LD' ? -1 : role === 'C' ? 0 : 1);
+const isDefence = (role: Role): boolean => role === 'LD' || role === 'RD';
 
 /** Is `carrier` deep enough in its own end that the team should be breaking out? */
 function breakingOut(world: World, team: Skater['team'], carrier: Point): boolean {
@@ -122,6 +123,7 @@ function breakoutAnchor(plan: Breakout, s: Skater, carrier: Point): Point {
   const wide = (side: number, inset: number): number => (side < 0 ? inset : RINK.w - inset);
   const side = sideOf(s.role);
   const strong = side === cSide;
+  if (isDefence(s.role)) return keepIn(CX + side * 16, carrier.y - fwd * 4); // the partner: an outlet behind/beside the carrier
   switch (plan) {
     case 'boards':
       if (s.role === 'C') return keepIn(CX - cSide * 14, carrier.y - fwd * 6);
@@ -139,8 +141,13 @@ function breakoutAnchor(plan: Breakout, s: Skater, carrier: Point): Point {
 function supportAnchor(world: World, s: Skater, carrier: Point): Point {
   const net = attackedNet(s.team);
   const fwd = net.dir; // toward the attacked end
-  const side = s.role === 'L' ? -1 : 1;
+  const side = sideOf(s.role);
   if (breakingOut(world, s.team, carrier)) return breakoutAnchor(world.breakout[s.team], s, carrier);
+  if (isDefence(s.role)) {
+    // Defence hold the points when we are set up in their end, otherwise trail the play.
+    if (progress(s.team, carrier.y) > 25) return keepIn(CX + side * 20, MID + fwd * 52);
+    return keepIn(CX + side * 18, carrier.y - fwd * 14);
+  }
   if (progress(s.team, carrier.y) > 25) {
     // Offensive zone: C in the slot, wings wide and low.
     if (s.role === 'C') return keepIn(CX, net.gy - fwd * 20);
@@ -155,6 +162,7 @@ function supportAnchor(world: World, s: Skater, carrier: Point): Point {
 function defendAnchor(world: World, s: Skater, puck: Point, carrierIdx: number): Point {
   const own = defendedNet(s.team);
   const goal = { x: CX, y: own.gy };
+  if (isDefence(s.role)) return keepIn(CX + sideOf(s.role) * 9, own.gy - own.dir * 14); // guard the slot, either side of the net
   if (s.role === 'C') {
     const d = dist(puck, goal) || 1;
     return keepIn(goal.x + ((puck.x - goal.x) / d) * 16, goal.y + ((puck.y - goal.y) / d) * 16);
