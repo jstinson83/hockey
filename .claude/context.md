@@ -32,6 +32,6 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
 - Skater AI: 5v5 teams, roles (C/L/R/LD/RD), carrier decisions, switching.
 - AI strategies, first slice: per-team breakout plans (`World.breakout`: carry / boards / swing /
   stretch) that change support anchors and the carrier's designated outlet pass while it is deep in
-  its own end. Plans are data-ish switches inside `ai.ts`, picked by the player (B / N), not by the AI.
+  its own end. Plans are switches inside `ai.ts`; each new game rolls one per team at random (`main.ts`), B / N override. The AI does not choose plans itself yet.
 - Live tuning panel (`T`) with copy-out of changed values.
 - Pause screen, fullscreen, AI-vs-AI demo (`D`).

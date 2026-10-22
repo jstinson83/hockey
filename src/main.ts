@@ -10,7 +10,9 @@ const OPTIONS_BUTTON = 9; // Options / Start in the standard gamepad mapping
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const ctx = setupCanvas(canvas);
-const newWorld = () => createWorld((Math.random() * 2 ** 31) | 0); // random seed: shot spread differs each game
+const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(Math.random() * xs.length)];
+// Random seed (shot spread differs each game) and a random breakout plan per team, for trying them out.
+const newWorld = () => createWorld((Math.random() * 2 ** 31) | 0, { breakout: [pick(BREAKOUTS), pick(BREAKOUTS)] });
 let world = newWorld();
 let camera = createCamera(world);
 const tuning = initTuningPanel(document.getElementById('tuning')!);
@@ -26,15 +28,13 @@ addEventListener('keydown', (e) => {
   }
   if (e.code === 'KeyP' || (e.code === 'Escape' && !e.repeat)) paused = !paused;
   if (e.code === 'KeyD') demo = !demo;
-  // B / N cycle red's / blue's breakout plan (carries over a reset).
+  // B / N cycle red's / blue's breakout plan (a reset rerolls them).
   if (e.code === 'KeyB' || e.code === 'KeyN') {
     const team = e.code === 'KeyB' ? 0 : 1;
     world.breakout[team] = BREAKOUTS[(BREAKOUTS.indexOf(world.breakout[team]) + 1) % BREAKOUTS.length];
   }
   if (e.code === 'KeyR') {
-    const plans = world.breakout;
     world = newWorld();
-    world.breakout = plans;
     camera = createCamera(world);
     paused = false;
   }

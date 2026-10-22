@@ -15,7 +15,7 @@ PS5 pad: X = shoot, Square = pass, and without the puck Square switches player. 
 slapshot (aim assist pulls shots toward the net; spread keeps them from being automatic).
 Without the puck, tapping shoot is a speed burst (stacks to a cap) and opens a short
 bodycheck window. P / Esc / the Options button pauses (it also pauses when the tab loses
-focus). R resets, F toggles fullscreen. B / N cycle red's / blue's AI breakout plan (carry, boards, swing, stretch;
+focus). R resets, F toggles fullscreen. Each game starts with a random AI breakout plan per team; B / N cycle red's / blue's (carry, boards, swing, stretch;
 shown above the scoreboard).
 Browsers only report a gamepad after a button press on it.
 
