@@ -31,10 +31,27 @@ export const TUNING = {
   pickupRadius: 4.2,  // skater centre -> puck centre
   shooterLockout: 0.35, // s before the shooter can re-collect their own shot
 
+  // Burst: tapping the shoot button without the puck. Each tap kicks the skater forward
+  // and raises their top speed (up to boostMax over maxSpeed), which then decays.
+  boostPerTap: 5,
+  boostMax: 14,
+  boostImpulse: 8,
+  boostDecay: 7,       // units/s of top speed lost per second
+
   // Shooting: tap = wrist shot, hold to charge toward slapshot
   wristSpeed: 70,
   slapSpeed: 130,
   chargeTime: 0.6,    // s of holding for a full slapshot
+  aimAssistCone: 0.96, // rad (~55deg): shots within this of the net get pulled toward it
+  aimAssist: 0.85,    // how far toward the (post-clamped) net a shot is pulled, 0..1
+  aimInset: 1.5,      // assisted shots aim this far inside the posts
+  wristSpread: 0.05,  // rad of random error per shot
+  slapSpread: 0.09,   // slapshots are faster but sloppier
+
+  // Passing
+  passSpeed: 55,
+  passCone: 0.6,      // rad: a teammate this close to where you face is the target
+  passLead: 0.25,     // s of teammate velocity to lead
 
   // Nets and goalies
   postRadius: 0.6,      // net frame thickness (puck and skaters collide with it)
@@ -51,8 +68,16 @@ export const TUNING = {
   goalieDownTime: 0.75, // s spent down before recovering
   goalieBounce: 0.35,   // restitution off the goalie (rebounds)
 
-  // Checking
-  checkSpeed: 22,     // closing speed that knocks the puck off a carrier
+  // Checking. A tap of the shoot button without the puck opens a check window: a hit
+  // inside it knocks the puck loose at a much lower closing speed, shoves the victim and
+  // briefly stuns them. Plain contact still knocks the puck loose at checkSpeed.
+  checkSpeed: 22,     // closing speed that knocks the puck off a carrier in plain contact
+  checkWindow: 0.35,  // s after a tap during which contact counts as a check
+  checkMinSpeed: 10,  // closing speed a check needs to land
+  checkBounce: 0.8,
+  checkImpulse: 14,   // extra shove on the victim
+  checkStun: 0.6,     // s of reduced control
+  stunAccel: 0.25,    // fraction of normal acceleration while stunned
 };
 
 /** Presentation only: nothing here affects the simulation. */

@@ -10,9 +10,11 @@ TypeScript + Vite + Canvas 2D. Local vs. AI and local 1v1 (two gamepads).
     npm test         # sim unit tests (vitest)
     npm run build    # typecheck + production bundle in dist/
 
-Controls: P1 arrows + Space (or gamepad 1), P2 gamepad 2 only.
-Tap the action button with the puck to shoot, hold it to charge a slapshot.
-Hit the carrier hard enough to knock the puck loose. R resets.
+Controls: P1 arrows + Space (shoot) + Z (pass), or gamepad 1; P2 gamepad 2 only. On a
+PS5 pad: X = shoot, Square = pass. With the puck, tap shoot = wrist shot, hold = charge a
+slapshot (aim assist pulls shots toward the net; spread keeps them from being automatic).
+Without the puck, tapping shoot is a speed burst (stacks to a cap) and opens a short
+bodycheck window. R resets.
 Browsers only report a gamepad after a button press on it.
 
 ## Layout

@@ -8,7 +8,8 @@ const MAX_FRAME = 0.25; // avoid spiral of death after tab switches
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const ctx = setupCanvas(canvas);
-let world = createWorld();
+const newWorld = () => createWorld((Math.random() * 2 ** 31) | 0); // random seed: shot spread differs each game
+let world = newWorld();
 let camera = createCamera(world);
 addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') {
@@ -16,7 +17,7 @@ addEventListener('keydown', (e) => {
     else void document.documentElement.requestFullscreen();
   }
   if (e.code === 'KeyR') {
-    world = createWorld();
+    world = newWorld();
     camera = createCamera(world);
   }
 });

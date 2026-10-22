@@ -573,9 +573,11 @@ function drawSkater(ctx: CanvasRenderingContext2D, cam: Camera, s: World['skater
   controlStar(ctx, sx, sy);
   shadow(ctx, cam, s.x, s.y, r);
 
-  // Upright body: a rounded box standing on the shadow.
+  // Upright body: a rounded box standing on the shadow. Faded while stunned.
   const w = r * 2 * S * 0.85;
   const h = VIEW.bodyHeight * S * T + r * S * T;
+  ctx.save();
+  if (s.stun > 0) ctx.globalAlpha = 0.5 + 0.2 * Math.sin(s.stun * 40);
   ctx.fillStyle = s.color;
   ctx.beginPath();
   ctx.roundRect(sx - w / 2, sy - h + r * S * T * 0.5, w, h, w * 0.3);
@@ -583,6 +585,16 @@ function drawSkater(ctx: CanvasRenderingContext2D, cam: Camera, s: World['skater
   ctx.strokeStyle = 'rgba(0,0,0,0.5)';
   ctx.lineWidth = 1;
   ctx.stroke();
+  ctx.restore();
+
+  // Check window: an orange ring on the ice
+  if (s.checking > 0) {
+    ctx.strokeStyle = '#ff9a1f';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, (r + 0.8) * S, (r + 0.8) * S * T, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 
   // Facing tick on the ground, projected so it reads in the tilted view.
   ctx.strokeStyle = '#000';

@@ -14,8 +14,13 @@ export interface Skater {
   facing: number;      // radians
   team: Team;
   charge: number;      // seconds the action button has been held with the puck
-  actionHeld: boolean; // previous frame's action state, for release detection
+  actionHeld: boolean; // previous frame's shoot-button state, for press/release detection
+  passHeld: boolean;
+  pressedWithoutPuck: boolean; // this press began without the puck, so it is a burst, not a shot
   lockout: number;     // s before this skater can pick up the puck
+  boost: number;       // extra top speed from burst taps; decays
+  checking: number;    // s left in the check window opened by a tap
+  stun: number;        // s left of reduced control after being checked
   color: string;
 }
 
@@ -53,6 +58,7 @@ export interface World {
   goalies: Goalie[]; // indexed by team
   puck: Puck;
   game: Game;
+  rng: number; // PRNG state; shot spread draws from it, keeping the sim deterministic per seed
 }
 
 /** The net a team defends: red defends the bottom net, blue the top. */
@@ -63,7 +69,8 @@ export function defendedNet(team: Team): Net {
 function makeSkater(team: Team, y: number, facing: number): Skater {
   return {
     x: RINK.w / 2, y, vx: 0, vy: 0, facing, team,
-    charge: 0, actionHeld: false, lockout: 0, color: TEAM_COLORS[team],
+    charge: 0, actionHeld: false, passHeld: false, pressedWithoutPuck: false, lockout: 0,
+    boost: 0, checking: 0, stun: 0, color: TEAM_COLORS[team],
   };
 }
 
@@ -76,7 +83,7 @@ function makeGoalie(team: Team): Goalie {
   };
 }
 
-export function createWorld(): World {
+export function createWorld(seed = 1): World {
   const world: World = {
     skaters: [makeSkater(0, 0, -Math.PI / 2), makeSkater(1, 0, Math.PI / 2)],
     goalies: [makeGoalie(0), makeGoalie(1)],
@@ -85,6 +92,7 @@ export function createWorld(): World {
       phase: 'faceoff', timer: GAME.faceoffSeconds, period: 1, overtime: false,
       clock: GAME.periodSeconds, score: [0, 0], lastScorer: null,
     },
+    rng: seed | 0,
   };
   placeForFaceoff(world);
   return world;
@@ -101,7 +109,12 @@ function placeForFaceoff(world: World): void {
     s.facing = below ? -Math.PI / 2 : Math.PI / 2;
     s.charge = 0;
     s.actionHeld = false;
+    s.passHeld = false;
+    s.pressedWithoutPuck = false;
     s.lockout = 0;
+    s.boost = 0;
+    s.checking = 0;
+    s.stun = 0;
   });
   world.goalies.forEach((g, i) => Object.assign(g, makeGoalie(i as Team)));
   Object.assign(world.puck, { x: RINK.w / 2, y: mid, vx: 0, vy: 0, carrier: -1 });
@@ -120,15 +133,24 @@ export function step(world: World, intents: Intent[], dt: number): void {
 
   skaters.forEach((s, i) => moveSkater(s, controllable ? intents[i] : undefined, dt));
 
-  // Skater vs. skater: separate, bounce, and let a hard hit knock the puck loose.
+  // Skater vs. skater: separate and bounce. A tap of the shoot button opens a check window;
+  // a hit inside it lands at a low closing speed, shoves and stuns the victim, and knocks
+  // the puck loose. Plain contact only knocks the puck loose when it is hard enough.
   for (let i = 0; i < skaters.length; i++) {
     for (let j = i + 1; j < skaters.length; j++) {
+      const a = skaters[i];
+      const b = skaters[j];
+      const checking = a.checking > 0 || b.checking > 0;
       const closing = collideCircles(
-        skaters[i], skaters[j], TUNING.skaterRadius, TUNING.skaterRadius, TUNING.skaterBounce,
+        a, b, TUNING.skaterRadius, TUNING.skaterRadius, checking ? TUNING.checkBounce : TUNING.skaterBounce,
       );
+      if (game.phase !== 'play') continue;
       const carrier = world.puck.carrier;
-      if (game.phase === 'play' && closing >= TUNING.checkSpeed && (carrier === i || carrier === j)) {
-        knockLoose(world, carrier === i ? j : i);
+      const threshold = checking ? TUNING.checkMinSpeed : TUNING.checkSpeed;
+      if (closing >= threshold && (carrier === i || carrier === j)) knockLoose(world, carrier === i ? j : i);
+      if (checking && closing >= TUNING.checkMinSpeed) {
+        if (a.checking > 0) stunAndShove(b, a);
+        if (b.checking > 0) stunAndShove(a, b);
       }
     }
   }
@@ -141,7 +163,7 @@ export function step(world: World, intents: Intent[], dt: number): void {
   skaters.forEach((s) => goalies.forEach((g) => collideStatic(s, TUNING.skaterRadius, g, goalieRadius(g), 0.2)));
 
   updatePuck(world, dt);
-  skaters.forEach((_, i) => handleShot(world, i, controllable ? intents[i] : undefined, dt));
+  skaters.forEach((_, i) => handleButtons(world, i, controllable ? intents[i] : undefined, dt));
 
   checkGoal(world);
   advancePhase(world, dt);
@@ -149,22 +171,38 @@ export function step(world: World, intents: Intent[], dt: number): void {
 
 function moveSkater(s: Skater, intent: Intent | undefined, dt: number): void {
   s.lockout = Math.max(0, s.lockout - dt);
+  s.checking = Math.max(0, s.checking - dt);
+  s.stun = Math.max(0, s.stun - dt);
+  s.boost = Math.max(0, s.boost - TUNING.boostDecay * dt);
   if (intent) {
-    s.vx += intent.x * TUNING.accel * dt;
-    s.vy += intent.y * TUNING.accel * dt;
+    const accel = TUNING.accel * (s.stun > 0 ? TUNING.stunAccel : 1);
+    s.vx += intent.x * accel * dt;
+    s.vy += intent.y * accel * dt;
     if (intent.x !== 0 || intent.y !== 0) s.facing = Math.atan2(intent.y, intent.x);
   }
   const damp = Math.pow(TUNING.friction, dt);
   s.vx *= damp;
   s.vy *= damp;
 
+  const cap = TUNING.maxSpeed + s.boost;
   const speed = Math.hypot(s.vx, s.vy);
-  if (speed > TUNING.maxSpeed) {
-    s.vx = (s.vx / speed) * TUNING.maxSpeed;
-    s.vy = (s.vy / speed) * TUNING.maxSpeed;
+  if (speed > cap) {
+    s.vx = (s.vx / speed) * cap;
+    s.vy = (s.vy / speed) * cap;
   }
   s.x += s.vx * dt;
   s.y += s.vy * dt;
+}
+
+/** The checked skater is shoved away from the checker and loses control for a moment. */
+function stunAndShove(victim: Skater, checker: Skater): void {
+  const dx = victim.x - checker.x;
+  const dy = victim.y - checker.y;
+  const d = Math.hypot(dx, dy) || 1;
+  victim.vx += (dx / d) * TUNING.checkImpulse;
+  victim.vy += (dy / d) * TUNING.checkImpulse;
+  victim.stun = TUNING.checkStun;
+  victim.charge = 0;
 }
 
 export function goalieRadius(g: Goalie): number {
@@ -329,25 +367,145 @@ function knockLoose(world: World, hitter: number): void {
   victim.charge = 0;
 }
 
-function handleShot(world: World, i: number, intent: Intent | undefined, dt: number): void {
+function clamp01(v: number): number {
+  return Math.min(Math.max(v, 0), 1);
+}
+
+function wrapAngle(a: number): number {
+  return Math.atan2(Math.sin(a), Math.cos(a));
+}
+
+/** Deterministic PRNG in [0, 1), advancing the world's state (mulberry32). */
+function nextRandom(world: World): number {
+  world.rng = (world.rng + 0x6d2b79f5) | 0;
+  let t = Math.imul(world.rng ^ (world.rng >>> 15), 1 | world.rng);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/** The net a team shoots at: red attacks the top net, blue the bottom. */
+function attackedNet(team: Team): Net {
+  return team === 0 ? NETS[0] : NETS[1];
+}
+
+/**
+ * Buttons per skater. With the puck: the shoot button charges a shot (released = shoot),
+ * the pass button passes. Without it: a tap of the shoot button is a speed burst that also
+ * opens a check window.
+ */
+function handleButtons(world: World, i: number, intent: Intent | undefined, dt: number): void {
   const s = world.skaters[i];
   const held = !!intent?.action;
+  const passHeld = !!intent?.pass;
   const hasPuck = world.puck.carrier === i;
-
-  if (hasPuck && held) s.charge += dt;
-
-  if (hasPuck && s.actionHeld && !held) {
-    const t = Math.min(s.charge / TUNING.chargeTime, 1);
-    const power = TUNING.wristSpeed + (TUNING.slapSpeed - TUNING.wristSpeed) * t;
-    const p = world.puck;
-    p.carrier = -1;
-    p.vx = Math.cos(s.facing) * power + s.vx * 0.5;
-    p.vy = Math.sin(s.facing) * power + s.vy * 0.5;
-    s.lockout = TUNING.shooterLockout;
-    s.charge = 0;
-  }
-  if (!hasPuck) s.charge = 0;
+  const pressed = held && !s.actionHeld;
+  const released = !held && s.actionHeld;
+  const passPressed = passHeld && !s.passHeld;
   s.actionHeld = held;
+  s.passHeld = passHeld;
+
+  if (pressed && !hasPuck) {
+    s.pressedWithoutPuck = true;
+    burst(s, intent);
+  }
+  // A press that began without the puck stays a burst even if the puck arrives mid-press.
+  const shotPress = !s.pressedWithoutPuck;
+  if (!held) s.pressedWithoutPuck = false;
+
+  if (hasPuck && world.game.phase === 'play') {
+    if (passPressed) {
+      passPuck(world, i);
+      return;
+    }
+    if (held && shotPress) s.charge += dt;
+    if (released && shotPress) shoot(world, i);
+  }
+  if (world.puck.carrier !== i) s.charge = 0;
+}
+
+/** Kick forward and raise top speed (up to a cap); the check window opens too. */
+function burst(s: Skater, intent: Intent | undefined): void {
+  let dx = intent?.x ?? 0;
+  let dy = intent?.y ?? 0;
+  if (dx === 0 && dy === 0) {
+    dx = Math.cos(s.facing);
+    dy = Math.sin(s.facing);
+  }
+  const len = Math.hypot(dx, dy) || 1;
+  s.boost = Math.min(TUNING.boostMax, s.boost + TUNING.boostPerTap);
+  s.vx += (dx / len) * TUNING.boostImpulse;
+  s.vy += (dy / len) * TUNING.boostImpulse;
+  s.checking = TUNING.checkWindow;
+}
+
+/**
+ * Shot direction: where the skater faces, pulled toward the net when it is roughly ahead
+ * (the pull keeps the lateral aim, only clamping to inside the posts), then jittered.
+ * Aim assist gets the puck to the net; the goalie decides whether it goes in.
+ */
+function shotAngle(world: World, s: Skater, charge01: number): number {
+  let angle = s.facing;
+  const net = attackedNet(s.team);
+  const dy = net.gy - s.y;
+  const inFront = (s.y - net.gy) * -net.dir > 0;
+  const toNet = Math.atan2(dy, RINK.w / 2 - s.x);
+  const fy = Math.sin(s.facing);
+  if (inFront && Math.abs(wrapAngle(toNet - s.facing)) < TUNING.aimAssistCone && fy * dy > 0) {
+    const xCross = s.x + Math.cos(s.facing) * (dy / fy);
+    const reach = GOAL.width / 2 - TUNING.aimInset;
+    const targetX = Math.min(Math.max(xCross, RINK.w / 2 - reach), RINK.w / 2 + reach);
+    const target = Math.atan2(dy, targetX - s.x);
+    angle += wrapAngle(target - s.facing) * TUNING.aimAssist;
+  }
+  const spread = TUNING.wristSpread + (TUNING.slapSpread - TUNING.wristSpread) * charge01;
+  return angle + (nextRandom(world) * 2 - 1) * spread;
+}
+
+function shoot(world: World, i: number): void {
+  const s = world.skaters[i];
+  const t = clamp01(s.charge / TUNING.chargeTime);
+  const power = TUNING.wristSpeed + (TUNING.slapSpeed - TUNING.wristSpeed) * t;
+  const angle = shotAngle(world, s, t);
+  const p = world.puck;
+  p.carrier = -1;
+  p.vx = Math.cos(angle) * power + s.vx * 0.5;
+  p.vy = Math.sin(angle) * power + s.vy * 0.5;
+  s.lockout = TUNING.shooterLockout;
+  s.charge = 0;
+}
+
+/** Teammate (if any) nearest to where the skater is facing, within the pass cone. */
+function passTarget(world: World, i: number): Skater | null {
+  const s = world.skaters[i];
+  let best: Skater | null = null;
+  let bestScore = Infinity;
+  world.skaters.forEach((m, j) => {
+    if (j === i || m.team !== s.team) return;
+    const off = Math.abs(wrapAngle(Math.atan2(m.y - s.y, m.x - s.x) - s.facing));
+    if (off > TUNING.passCone) return;
+    const score = off * 40 + Math.hypot(m.x - s.x, m.y - s.y); // prefer on-line, then near
+    if (score < bestScore) { best = m; bestScore = score; }
+  });
+  return best;
+}
+
+/** A flat pass: to the teammate in front (led by their velocity), else straight ahead. */
+function passPuck(world: World, i: number): void {
+  const s = world.skaters[i];
+  const mate = passTarget(world, i);
+  let angle = s.facing;
+  if (mate) {
+    angle = Math.atan2(
+      mate.y + mate.vy * TUNING.passLead - s.y,
+      mate.x + mate.vx * TUNING.passLead - s.x,
+    );
+  }
+  const p = world.puck;
+  p.carrier = -1;
+  p.vx = Math.cos(angle) * TUNING.passSpeed + s.vx * 0.5;
+  p.vy = Math.sin(angle) * TUNING.passSpeed + s.vy * 0.5;
+  s.lockout = TUNING.shooterLockout;
+  s.charge = 0;
 }
 
 /**

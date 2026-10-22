@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Intent } from './input';
 import { createWorld, step, type World } from './sim';
-import { GAME, GOAL, RINK } from './sim-constants';
+import { GAME, GOAL, RINK, TUNING } from './sim-constants';
 import { NETS } from './collide';
 
 const DT = 1 / 60;
-const idle: Intent = { x: 0, y: 0, action: false };
+const idle: Intent = { x: 0, y: 0, action: false, pass: false };
 const CX = RINK.w / 2;
 
 function run(world: World, seconds: number, intents: Intent[] = [idle, idle]): void {
@@ -59,7 +59,7 @@ describe('goals', () => {
     s.x = CX; s.y = 40; s.facing = -Math.PI / 2;
     w.puck.carrier = 0;
     for (let i = 0; i < 3 * 60; i++) {
-      step(w, [{ x: 0, y: -1, action: false }, idle], DT);
+      step(w, [{ x: 0, y: -1, action: false, pass: false }, idle], DT);
       const inNet = s.x > net.x0 && s.x < net.x1 && s.y < net.gy;
       expect(inNet).toBe(false);
     }
@@ -75,7 +75,7 @@ describe('wrapping behind the net', () => {
     // Behind the net, facing it, as close to the boards as a skater can get.
     s.x = CX; s.y = net.gy + net.dir * (GOAL.depth + 3.2); s.facing = net.dir === -1 ? Math.PI / 2 : -Math.PI / 2;
     w.puck.carrier = w.skaters.indexOf(s);
-    const intent = { x: 0, y: -net.dir, action: false };
+    const intent = { x: 0, y: -net.dir, action: false, pass: false };
     for (let i = 0; i < 3 * 60; i++) {
       step(w, n === 0 ? [intent, idle] : [idle, intent], DT);
       expect(w.game.phase).toBe('play');
@@ -139,5 +139,161 @@ describe('game flow', () => {
     w.puck.x = CX; w.puck.y = NETS[0].gy - 3;
     run(w, GAME.goalSeconds + 0.1);
     expect(w.game.phase).toBe('end');
+  });
+});
+
+describe('buttons', () => {
+  const tap = (action: boolean, pass = false, x = 0, y = 0): Intent => ({ x, y, action, pass });
+
+  it('tapping shoot without the puck bursts the skater up to a capped top speed', () => {
+    const w = liveWorld();
+    const s = w.skaters[0];
+    s.x = CX; s.y = RINK.h - 30;
+    for (let n = 0; n < 12; n++) {
+      step(w, [tap(true, false, 0, -1), idle], DT);
+      step(w, [tap(false, false, 0, -1), idle], DT);
+    }
+    const speed = Math.hypot(s.vx, s.vy);
+    expect(speed).toBeGreaterThan(TUNING.maxSpeed + 4);
+    expect(speed).toBeLessThanOrEqual(TUNING.maxSpeed + TUNING.boostMax + 1e-6);
+    expect(s.boost).toBeLessThanOrEqual(TUNING.boostMax);
+  });
+
+  it('the boost decays back to normal top speed', () => {
+    const w = liveWorld();
+    const s = w.skaters[0];
+    s.x = CX; s.y = RINK.h - 30;
+    for (let n = 0; n < 6; n++) {
+      step(w, [tap(true, false, 0, -1), idle], DT);
+      step(w, [tap(false, false, 0, -1), idle], DT);
+    }
+    s.y = RINK.h - 30;
+    for (let i = 0; i < 4 * 60; i++) {
+      s.y = Math.max(s.y, 120); // keep it clear of the far end
+      step(w, [tap(false, false, 0, -1), idle], DT);
+    }
+    expect(s.boost).toBe(0);
+    expect(Math.hypot(s.vx, s.vy)).toBeLessThanOrEqual(TUNING.maxSpeed + 1e-6);
+  });
+
+  it('a press that began without the puck never shoots, even if the puck arrives mid-press', () => {
+    const w = liveWorld();
+    const s = w.skaters[0];
+    step(w, [tap(true), idle], DT); // press with no puck
+    w.puck.carrier = 0;             // puck arrives while still held
+    for (let i = 0; i < 20; i++) step(w, [tap(true), idle], DT);
+    step(w, [tap(false), idle], DT);
+    expect(w.puck.carrier).toBe(0);
+    expect(s.charge).toBe(0);
+  });
+
+  it('a tap-initiated check knocks the puck off a carrier at a speed plain contact would not', () => {
+    const run1 = (checkerTaps: boolean): number => {
+      const w = liveWorld();
+      const [red, blue] = w.skaters;
+      blue.x = CX; blue.y = 100; blue.vx = blue.vy = 0; w.puck.carrier = 1;
+      red.x = CX; red.y = 100 + 9; red.vx = 0; red.vy = -14; // closing ~14: above checkMinSpeed, below checkSpeed
+      step(w, [tap(checkerTaps, false, 0, -1), idle], DT);
+      for (let i = 0; i < 30; i++) step(w, [idle, idle], DT);
+      return w.puck.carrier;
+    };
+    expect(run1(false)).toBe(1);   // plain bump: blue keeps the puck
+    expect(run1(true)).not.toBe(1); // checked: puck comes off blue (the checker may then pick it up)
+  });
+
+  it('a check stuns the victim and shoves them', () => {
+    const w = liveWorld();
+    const [red, blue] = w.skaters;
+    blue.x = CX; blue.y = 100; red.x = CX; red.y = 108; red.vy = -20;
+    step(w, [tap(true, false, 0, -1), idle], DT);
+    for (let i = 0; i < 6; i++) step(w, [idle, idle], DT);
+    expect(blue.stun).toBeGreaterThan(0);
+    expect(blue.vy).toBeLessThan(0); // shoved away from the checker (up the ice)
+  });
+
+  it('pass goes in the facing direction at pass speed, and cancels a charged shot', () => {
+    const w = liveWorld();
+    const s = w.skaters[0];
+    s.x = CX; s.y = 120; s.facing = -Math.PI / 2; w.puck.carrier = 0;
+    step(w, [tap(true), idle], DT);              // starts charging... (press with puck)
+    for (let i = 0; i < 10; i++) step(w, [tap(true), idle], DT);
+    step(w, [tap(true, true), idle], DT);        // pass while charging
+    expect(w.puck.carrier).toBe(-1);
+    expect(Math.hypot(w.puck.vx, w.puck.vy)).toBeCloseTo(TUNING.passSpeed, 0);
+    expect(w.puck.vy).toBeLessThan(0);
+  });
+
+  it('a pass leads toward a teammate in the cone', () => {
+    const w = liveWorld();
+    const mate = { ...w.skaters[0], x: CX + 12, y: 90, vx: 0, vy: 0 };
+    w.skaters.push(mate);
+    const s = w.skaters[0];
+    s.x = CX; s.y = 120; s.facing = -Math.PI / 2 + 0.2; w.puck.carrier = 0;
+    step(w, [tap(false, true), idle], DT);
+    const ang = Math.atan2(w.puck.vy, w.puck.vx);
+    const want = Math.atan2(90 - 120, 12);
+    expect(Math.abs(ang - want)).toBeLessThan(0.08);
+  });
+});
+
+describe('shots', () => {
+  /** Red shoots from (x, y) facing `facing`, returns the world with the puck just released. */
+  function release(seed: number, x: number, y: number, facing: number, holdSeconds = 0): World {
+    const w = createWorld(seed);
+    w.game.phase = 'play';
+    const s = w.skaters[0];
+    s.x = x; s.y = y; s.facing = facing; w.puck.carrier = 0;
+    w.skaters[1].x = RINK.w - 10; w.skaters[1].y = RINK.h / 2;
+    const hold: Intent = { x: 0, y: 0, action: true, pass: false };
+    const up: Intent = { x: 0, y: 0, action: false, pass: false };
+    step(w, [hold, idle], DT);
+    for (let i = 0; i < Math.round(holdSeconds / DT); i++) step(w, [hold, idle], DT);
+    step(w, [up, idle], DT);
+    return w;
+  }
+
+  /** Where a released puck crosses the far goal line (x), assuming a straight path. */
+  const crossX = (w: World): number => {
+    const t = (GOAL.line - w.puck.y) / w.puck.vy;
+    return w.puck.x + w.puck.vx * t;
+  };
+
+  it('pulls a shot that would miss wide back inside the posts', () => {
+    // Facing slightly wide of the right post from the slot.
+    const aimWide = -Math.PI / 2 + Math.atan2(GOAL.width / 2 + 5, 40);
+    const unassisted = CX + GOAL.width / 2 + 5; // where the raw aim crosses the line
+    const x = crossX(release(3, CX, 52, aimWide));
+    expect(x).toBeLessThan(unassisted - 3); // pulled substantially toward the net
+  });
+
+  it('does not touch the aim of a shot facing away from the net', () => {
+    const w = release(3, CX, 80, Math.PI / 2); // facing down the ice, away from red's target
+    expect(Math.atan2(w.puck.vy, w.puck.vx)).toBeGreaterThan(Math.PI / 2 - TUNING.wristSpread - 0.01);
+    expect(Math.atan2(w.puck.vy, w.puck.vx)).toBeLessThan(Math.PI / 2 + TUNING.wristSpread + 0.01);
+  });
+
+  it('keeps the shooter\'s chosen corner when already aimed inside the posts', () => {
+    const aim = -Math.PI / 2 + Math.atan2(4, 40); // aimed 4 units right of centre
+    const x = crossX(release(9, CX, 52, aim));
+    expect(Math.abs(x - (CX + 4))).toBeLessThan(40 * TUNING.wristSpread + 0.5);
+  });
+
+  it('is deterministic per seed but not identical across seeds', () => {
+    const a = release(5, CX, 60, -Math.PI / 2);
+    const b = release(5, CX, 60, -Math.PI / 2);
+    const c = release(6, CX, 60, -Math.PI / 2);
+    expect(a.puck.vx).toBe(b.puck.vx);
+    expect(a.puck.vx).not.toBe(c.puck.vx);
+  });
+
+  it('is never an automatic goal: across seeds, aimed shots are saved or missed some of the time', () => {
+    let goals = 0;
+    const n = 30;
+    for (let seed = 1; seed <= n; seed++) {
+      const w = release(seed, CX, 55, -Math.PI / 2, 0); // wrist shot, dead centre: goalie's strength
+      run(w, 2);
+      if (w.game.score[0] > 0) goals++;
+    }
+    expect(goals).toBeLessThan(n);
   });
 });
