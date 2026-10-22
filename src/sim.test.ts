@@ -362,16 +362,61 @@ describe('AI and control', () => {
     expect(released).toBe(true);
   });
 
-  it('control never switches by itself, even when a teammate gets the puck', () => {
+  it('control never switches on its own while the puck is loose or the other team has it', () => {
+    const w = createWorld(1);
+    w.humans = [true, false];
+    w.game.phase = 'play';
+    const start = w.controlled[0];
+    for (let i = 0; i < 180; i++) step(w, [idle, idle], DT);
+    expect(w.controlled[0]).toBe(start);
+    // The other team has it.
+    const blue = w.skaters.findIndex((s) => s.team === 1);
+    w.skaters[blue].x = w.puck.x; w.skaters[blue].y = w.puck.y; w.puck.carrier = blue;
+    for (let i = 0; i < 30; i++) {
+      step(w, [idle, idle], DT);
+      w.puck.carrier = blue; // keep it there for the check
+    }
+    expect(w.controlled[0]).toBe(start);
+  });
+
+  it('when an AI teammate picks up the puck, the human is switched to them', () => {
     const w = createWorld(1);
     w.humans = [true, false];
     w.game.phase = 'play';
     const start = w.controlled[0];
     const mate = w.skaters.findIndex((s, i) => s.team === 0 && i !== start);
-    w.skaters[mate].x = w.puck.x; w.skaters[mate].y = w.puck.y;
+    w.skaters[mate].x = w.puck.x; w.skaters[mate].y = w.puck.y; w.puck.carrier = mate;
+    step(w, [idle, idle], DT);
+    expect(w.controlled[0]).toBe(mate);
+  });
+
+  it('a teammate picking up the puck does not switch a team with no human', () => {
+    const w = createWorld(1);
+    w.humans = [false, false];
+    w.game.phase = 'play';
+    const before = w.controlled[0];
+    const mate = w.skaters.findIndex((s, i) => s.team === 0 && i !== before);
     w.puck.carrier = mate;
-    for (let i = 0; i < 120; i++) step(w, [idle, idle], DT);
-    expect(w.controlled[0]).toBe(start);
+    step(w, [idle, idle], DT);
+    expect(w.controlled[0]).toBe(before);
+  });
+
+  it('the human who passes ends up controlling the receiver once they have the puck', () => {
+    const w = createWorld(1);
+    w.humans = [true, false];
+    w.game.phase = 'play';
+    const start = w.controlled[0];
+    const mate = w.skaters.findIndex((s, i) => s.team === 0 && i !== start);
+    const s = w.skaters[start];
+    s.x = CX; s.y = 120; s.facing = -Math.PI / 2; w.puck.carrier = start;
+    w.skaters[mate].x = CX; w.skaters[mate].y = 80; // dead ahead
+    w.skaters.filter((o) => o.team === 1).forEach((o) => { o.x = 8; o.y = 20; });
+    step(w, [{ x: 0, y: 0, action: false, pass: true }, idle], DT);
+    expect(w.controlled[0]).toBe(start); // the pass itself doesn't switch
+    for (let i = 0; i < 120 && w.puck.carrier !== mate; i++) step(w, [idle, idle], DT);
+    expect(w.puck.carrier).toBe(mate);
+    step(w, [idle, idle], DT);
+    expect(w.controlled[0]).toBe(mate);
   });
 
   /** A 3v3 world with red's skaters at known distances from the puck: [0] nearest ... [2] farthest. */

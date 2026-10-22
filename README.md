@@ -29,7 +29,7 @@ Browsers only report a gamepad after a button press on it.
 - `src/ai.ts` - skater AI (3v3 by default). Team plan (support / defend / chase / press anchors by
   role: C, L, R), carrier decisions (shoot / pass / carry, a few times a second, seeded random), and
   steering that emits the same `Intent` a human would. Each human controls one skater per team
-  (you choose: the pass button without the puck switches to the teammate nearest it, or the next nearest if you already are; it never switches on its own); everyone else is AI. Blue is AI unless a second pad
+  (control changes only two ways: when a teammate picks up the puck you're switched to them, and the pass button without the puck switches to the teammate nearest it, or the next nearest if you already are); everyone else is AI. Blue is AI unless a second pad
   is connected; `D` toggles an AI-vs-AI demo.
 - `src/sim-constants.ts` - rink dimensions and every feel-related `TUNING` value.
 - `src/collide.ts` - circle-vs-boards (rounded rink) and circle-vs-circle. No physics

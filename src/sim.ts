@@ -212,12 +212,15 @@ export function step(world: World, human: Intent[], dt: number): void {
 }
 
 /**
- * Control only changes when a human presses the pass button without the puck (with the puck
- * it's a pass); it never switches by itself. A press goes to the teammate closest to the puck
- * (or the second closest if you already are the closest), and presses in quick succession
- * keep working down the ranking. The held-button state moves with control so a held shoot
- * button doesn't read as a fresh tap on the new skater, and the press that switched is
- * consumed so switching to the carrier doesn't also pass.
+ * Who a human controls. Two ways control changes, and no others:
+ *  - the puck: if a teammate (AI) picks it up, control moves to them, so the skater with the
+ *    puck on a human's team is always the human's;
+ *  - the pass button without the puck (with it, it's a pass): goes to the teammate closest to
+ *    the puck, or the second closest if you already are the closest; presses in quick
+ *    succession keep working down the ranking.
+ * The held-button state moves with control so a held shoot button doesn't read as a fresh tap
+ * on the new skater, and any pass press in progress is consumed so switching onto the carrier
+ * doesn't also pass.
  */
 function updateControlled(world: World, human: Intent[], dt: number): void {
   const { skaters, puck } = world;
@@ -226,8 +229,15 @@ function updateControlled(world: World, human: Intent[], dt: number): void {
     const pressed = !!human[team]?.pass;
     const edge = pressed && !world.switchHeld[team];
     world.switchHeld[team] = pressed;
+    if (!world.humans[team]) continue;
     const cur = world.controlled[team];
-    if (!edge || !world.humans[team] || puck.carrier === cur) continue; // with the puck it's a pass
+
+    // A teammate has the puck: they're yours now.
+    if (puck.carrier >= 0 && puck.carrier !== cur && skaters[puck.carrier].team === team) {
+      handOverControl(world, team, puck.carrier, pressed);
+      continue;
+    }
+    if (!edge || puck.carrier === cur) continue; // with the puck it's a pass
 
     const mates = skaters
       .map((s, j) => ({ j, team: s.team, d: Math.hypot(s.x - puck.x, s.y - puck.y) }))
@@ -242,14 +252,18 @@ function updateControlled(world: World, human: Intent[], dt: number): void {
     if (mates[rank] === cur) rank = (rank + 1) % mates.length;
     world.switchRank[team] = rank;
     world.switchSince[team] = 0;
-
-    const a = skaters[cur];
-    const b = skaters[mates[rank]];
-    b.actionHeld = a.actionHeld; b.pressedWithoutPuck = a.pressedWithoutPuck;
-    b.passHeld = true; // this press is spent on the switch
-    a.actionHeld = false; a.passHeld = false; a.pressedWithoutPuck = false; a.charge = 0;
-    world.controlled[team] = mates[rank];
+    handOverControl(world, team, mates[rank], true);
   }
+}
+
+function handOverControl(world: World, team: Team, to: number, passPressed: boolean): void {
+  const a = world.skaters[world.controlled[team]];
+  const b = world.skaters[to];
+  b.actionHeld = a.actionHeld;
+  b.pressedWithoutPuck = a.pressedWithoutPuck;
+  b.passHeld = passPressed; // a press in progress is spent on the switch
+  a.actionHeld = false; a.passHeld = false; a.pressedWithoutPuck = false; a.charge = 0;
+  world.controlled[team] = to;
 }
 
 function moveSkater(s: Skater, intent: Intent | undefined, dt: number): void {
