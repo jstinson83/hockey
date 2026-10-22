@@ -7,7 +7,7 @@ export const GOAL = { line: 12, width: 14, depth: 5, height: 4, crease: 12 };
 export type Team = 0 | 1;
 
 /** Game flow. Team 0 (red, P1) defends the bottom net and attacks the top; team 1 (blue) the reverse. */
-export const GAME = { periods: 3, periodSeconds: 120, overtimeSeconds: 120, faceoffSeconds: 1.5, goalSeconds: 2.5 };
+export const GAME = { skatersPerTeam: 5, periods: 3, periodSeconds: 120, overtimeSeconds: 120, faceoffSeconds: 1.5, goalSeconds: 2.5 };
 export const TEAM_COLORS = ['#d33', '#36c'] as const;
 export const TEAM_NAMES = ['RED', 'BLUE'] as const;
 
@@ -82,6 +82,7 @@ export const TUNING = {
   aiLaneRadius: 3,      // an opponent this close to a shot/pass line blocks it
   aiPassCooldown: 0.9,  // s between passes
   aiPressure: 9,        // an opponent this close means the carrier is under pressure
+  aiBreakoutDepth: 40,  // a carrier this far inside its own half (from centre ice) is breaking out
   aiBurstCooldown: 0.55,
   aiCheckChance: 0.7,   // per decision, when within reach of the carrier
 

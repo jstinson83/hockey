@@ -15,7 +15,8 @@ PS5 pad: X = shoot, Square = pass, and without the puck Square switches player. 
 slapshot (aim assist pulls shots toward the net; spread keeps them from being automatic).
 Without the puck, tapping shoot is a speed burst (stacks to a cap) and opens a short
 bodycheck window. P / Esc / the Options button pauses (it also pauses when the tab loses
-focus). R resets, F toggles fullscreen.
+focus). R resets, F toggles fullscreen. Each game starts with a random AI breakout plan per team; B / N cycle red's / blue's (carry, boards, swing, stretch;
+shown above the scoreboard).
 Browsers only report a gamepad after a button press on it.
 
 ## Layout
@@ -26,7 +27,7 @@ Browsers only report a gamepad after a button press on it.
 - `src/sim.ts` also owns the game flow (faceoff -> play -> goal -> faceoff, 3x2:00 periods,
   sudden-death overtime, final) and the goalies: physical blockers with a reaction delay and a
   butterfly dive, so saves come from collisions and are tunable via `TUNING.goalie*`.
-- `src/ai.ts` - skater AI (3v3 by default). Team plan (support / defend / chase / press anchors by
+- `src/ai.ts` - skater AI (5v5 by default: C, L, R, LD, RD). Team plan (support / defend / chase / press anchors by
   role: C, L, R), carrier decisions (shoot / pass / carry, a few times a second, seeded random), and
   steering that emits the same `Intent` a human would. Each human controls one skater per team
   (control changes only two ways: when a teammate picks up the puck you're switched to them, and the pass button without the puck switches to the teammate nearest it, or the next nearest if you already are); everyone else is AI. Blue is AI unless a second pad
