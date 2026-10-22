@@ -30,5 +30,8 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
   game flow (faceoff -> play -> goal -> faceoff, 3x2:00 periods, sudden-death
   overtime, final).
 - Skater AI: 3v3 teams, roles (C/L/R), carrier decisions, switching.
+- AI strategies, first slice: per-team breakout plans (`World.breakout`: carry / boards / swing /
+  stretch) that change support anchors and the carrier's designated outlet pass while it is deep in
+  its own end. Plans are data-ish switches inside `ai.ts`, picked by the player (B / N), not by the AI.
 - Live tuning panel (`T`) with copy-out of changed values.
 - Pause screen, fullscreen, AI-vs-AI demo (`D`).

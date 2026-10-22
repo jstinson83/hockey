@@ -1,7 +1,7 @@
 import { isTextEntry, P1_KEYS, readIntent } from './input';
 import { createCamera, updateCamera } from './camera';
 import { drawPause, render, setupCanvas } from './render';
-import { createWorld, step, TUNING } from './sim';
+import { BREAKOUTS, createWorld, step, TUNING } from './sim';
 import { initTuningPanel } from './tuning-panel';
 
 const DT = 1 / 60; // fixed simulation timestep
@@ -26,8 +26,15 @@ addEventListener('keydown', (e) => {
   }
   if (e.code === 'KeyP' || (e.code === 'Escape' && !e.repeat)) paused = !paused;
   if (e.code === 'KeyD') demo = !demo;
+  // B / N cycle red's / blue's breakout plan (carries over a reset).
+  if (e.code === 'KeyB' || e.code === 'KeyN') {
+    const team = e.code === 'KeyB' ? 0 : 1;
+    world.breakout[team] = BREAKOUTS[(BREAKOUTS.indexOf(world.breakout[team]) + 1) % BREAKOUTS.length];
+  }
   if (e.code === 'KeyR') {
+    const plans = world.breakout;
     world = newWorld();
+    world.breakout = plans;
     camera = createCamera(world);
     paused = false;
   }

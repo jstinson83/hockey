@@ -82,6 +82,7 @@ export const TUNING = {
   aiLaneRadius: 3,      // an opponent this close to a shot/pass line blocks it
   aiPassCooldown: 0.9,  // s between passes
   aiPressure: 9,        // an opponent this close means the carrier is under pressure
+  aiBreakoutDepth: 40,  // a carrier this far inside its own half (from centre ice) is breaking out
   aiBurstCooldown: 0.55,
   aiCheckChance: 0.7,   // per decision, when within reach of the carrier
 

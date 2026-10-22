@@ -17,6 +17,17 @@ import { GOAL, RINK, TUNING } from './sim-constants';
 
 export type Role = 'C' | 'L' | 'R';
 
+/**
+ * How a team gets the puck out of its own end (while its carrier is deep in it):
+ *  - carry:   no plan; the carrier skates it out and the wings run the lanes ahead (the original behaviour).
+ *  - boards:  the wing on the carrier's side holds the boards for an outlet pass; the other wing
+ *             stays in the middle lane.
+ *  - swing:   the centre drops low and wide for a short pass, then leads the rush; the wings spread.
+ *  - stretch: the far wing flies to the far blue line and the carrier looks for the long pass.
+ */
+export const BREAKOUTS = ['carry', 'boards', 'swing', 'stretch'] as const;
+export type Breakout = (typeof BREAKOUTS)[number];
+
 export interface AiState {
   think: number;         // s until the next decision
   shotHold: number;      // s left holding the shoot button on a shot
@@ -87,11 +98,49 @@ function keepIn(x: number, y: number): Point {
   return { x: px, y: py };
 }
 
+const sideOf = (role: Role): number => (role === 'L' ? -1 : role === 'R' ? 1 : 0);
+
+/** Is `carrier` deep enough in its own end that the team should be breaking out? */
+function breakingOut(world: World, team: Skater['team'], carrier: Point): boolean {
+  return world.breakout[team] !== 'carry' && progress(team, carrier.y) < -TUNING.aiBreakoutDepth;
+}
+
+/** Who the carrier is trying to find in the current breakout, or -1. */
+function breakoutTarget(world: World, i: number): number {
+  const s = world.skaters[i];
+  const plan = world.breakout[s.team];
+  const strong = s.x < CX ? 'L' : 'R'; // the wing on the carrier's side
+  const role: Role | null = plan === 'boards' ? strong : plan === 'swing' ? 'C' : plan === 'stretch' ? (strong === 'L' ? 'R' : 'L') : null;
+  if (!role) return -1;
+  return world.skaters.findIndex((m, j) => j !== i && m.team === s.team && m.role === role);
+}
+
+/** Where a skater stands during a breakout; the carrier's side decides which wing is "strong". */
+function breakoutAnchor(plan: Breakout, s: Skater, carrier: Point): Point {
+  const fwd = attackedNet(s.team).dir;
+  const cSide = carrier.x < CX ? -1 : 1;
+  const wide = (side: number, inset: number): number => (side < 0 ? inset : RINK.w - inset);
+  const side = sideOf(s.role);
+  const strong = side === cSide;
+  switch (plan) {
+    case 'boards':
+      if (s.role === 'C') return keepIn(CX - cSide * 14, carrier.y - fwd * 6);
+      return strong ? keepIn(wide(side, 7), carrier.y + fwd * 24) : keepIn(CX, carrier.y + fwd * 38);
+    case 'swing':
+      if (s.role === 'C') return keepIn(CX - cSide * 18, carrier.y - fwd * 9);
+      return keepIn(wide(side, 12), carrier.y + fwd * 30);
+    default: // stretch
+      if (s.role === 'C') return keepIn(CX - cSide * 12, carrier.y - fwd * 6);
+      return strong ? keepIn(wide(side, 10), carrier.y + fwd * 14) : keepIn(wide(side, 14), MID + fwd * 38);
+  }
+}
+
 /** Where the support roles stand when we have (or are about to have) the puck. */
-function supportAnchor(s: Skater, carrier: Point): Point {
+function supportAnchor(world: World, s: Skater, carrier: Point): Point {
   const net = attackedNet(s.team);
   const fwd = net.dir; // toward the attacked end
   const side = s.role === 'L' ? -1 : 1;
+  if (breakingOut(world, s.team, carrier)) return breakoutAnchor(world.breakout[s.team], s, carrier);
   if (progress(s.team, carrier.y) > 25) {
     // Offensive zone: C in the slot, wings wide and low.
     if (s.role === 'C') return keepIn(CX, net.gy - fwd * 20);
@@ -231,8 +280,8 @@ function carrierIntent(world: World, i: number, dt: number): Intent {
       }
     }
 
-    // Pass?
-    const mate = choosePass(world, i);
+    // Pass? A breakout outlet first, then the usual read.
+    const mate = breakoutPass(world, i) ?? choosePass(world, i);
     if (mate) {
       ai.passCd = TUNING.aiPassCooldown;
       const dx = mate.x - s.x;
@@ -242,6 +291,19 @@ function carrierIntent(world: World, i: number, dt: number): Intent {
     }
   }
   return carryIntent(world, i);
+}
+
+/** The breakout's designated outlet, if the carrier is breaking out and the lane to them is open. */
+function breakoutPass(world: World, i: number): Point | null {
+  const s = world.skaters[i];
+  if (s.ai.passCd > 0 || !breakingOut(world, s.team, s)) return null;
+  const j = breakoutTarget(world, i);
+  if (j < 0) return null;
+  const m = world.skaters[j];
+  const d = dist(s, m);
+  if (d < 8 || d > (world.breakout[s.team] === 'stretch' ? 130 : 70)) return null;
+  if (laneBlocked(world, s.team, s, m) || nearestOpponent(world, s.team, m) < 6) return null;
+  return m;
 }
 
 /** Best open teammate to pass to, or null. Prefers up-ice and open; passes out of pressure. */
@@ -313,10 +375,10 @@ function offPuckIntent(world: World, i: number): Intent {
       target = routeAroundNet(s, pred);
       chase = true;
     } else {
-      target = progress(s.team, puck.y) > 0 ? supportAnchor(s, puck) : defendAnchor(world, s, puck, -1);
+      target = progress(s.team, puck.y) > 0 ? supportAnchor(world, s, puck) : defendAnchor(world, s, puck, -1);
     }
   } else if (mineHas) {
-    target = supportAnchor(s, carrier);
+    target = supportAnchor(world, s, carrier);
   } else if (closestTo(world, s.team, carrier, false) === i) {
     target = routeAroundNet(s, { x: carrier.x + carrier.vx * 0.3, y: carrier.y + carrier.vy * 0.3 });
     press = true;

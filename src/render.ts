@@ -698,6 +698,14 @@ function drawHud(ctx: CanvasRenderingContext2D, world: World): void {
   ctx.font = font(11);
   ctx.fillStyle = '#9aa3ad';
   ctx.fillText(periodLabel(world), mid, by + 33);
+  ctx.font = font(10);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = TEAM_COLORS[0];
+  ctx.fillText(`BREAKOUT ${world.breakout[0].toUpperCase()}`, mid - 32, by - 8);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = TEAM_COLORS[1];
+  ctx.fillText(`BREAKOUT ${world.breakout[1].toUpperCase()}`, mid + 32, by - 8);
+  ctx.textAlign = 'center';
 
   const cx = VIEW.width / 2;
   const cy = VIEW.height / 2 - 40;

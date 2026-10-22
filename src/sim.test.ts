@@ -301,6 +301,59 @@ describe('shots', () => {
   });
 });
 
+describe('breakouts', () => {
+  /** Red (attacking up the ice from y=200) with `carrier` on the puck deep in its own end, left of centre; blue far away. */
+  const breakWorld = (plan: 'carry' | 'boards' | 'swing' | 'stretch', carrier: number): World => {
+    const w = createWorld(5, { breakout: [plan, 'carry'] });
+    w.humans = [false, false];
+    w.game.phase = 'play';
+    const spots = [[CX, 172], [CX - 20, 168], [CX + 20, 168]]; // C, L, R
+    spots.forEach(([x, y], k) => { Object.assign(w.skaters[k], { x, y, vx: 0, vy: 0, facing: -Math.PI / 2 }); });
+    Object.assign(w.skaters[carrier], { x: CX - 20, y: 170 });
+    w.skaters.forEach((s) => { if (s.team === 1) { s.x = CX + 30; s.y = 40; } });
+    w.puck.carrier = carrier;
+    return w;
+  };
+  /** Who first takes the puck from `carrier` (-1 if nobody does within `seconds`). */
+  const firstReceiver = (w: World, carrier: number, seconds = 4): number => {
+    for (let i = 0; i < seconds * 60; i++) {
+      step(w, [idle, idle], DT);
+      if (w.puck.carrier >= 0 && w.puck.carrier !== carrier) return w.puck.carrier;
+    }
+    return -1;
+  };
+
+  it('each plan looks for its own outlet: boards = strong wing, swing = centre, stretch = far wing', () => {
+    expect(firstReceiver(breakWorld('boards', 0), 0)).toBe(1);  // C carries on the left: left wing is strong
+    expect(firstReceiver(breakWorld('swing', 2), 2)).toBe(0);   // anyone but C passes to C
+    expect(firstReceiver(breakWorld('stretch', 0), 0)).toBe(2); // left side: right wing is the far one
+    // With no plan the outlet is whatever the usual read finds, not a designated player.
+    const carry = [0, 2].map((c) => firstReceiver(breakWorld('carry', c), c));
+    expect(carry).not.toEqual([1, 0]);
+  });
+
+  it('the wings take different lanes under different plans', () => {
+    const wingX = (plan: 'boards' | 'swing' | 'stretch'): number => {
+      const w = breakWorld(plan, 0);
+      w.puck.carrier = 0;
+      for (let i = 0; i < 60; i++) { step(w, [idle, idle], DT); w.puck.carrier = 0; w.skaters[0].vx = w.skaters[0].vy = 0; }
+      return w.skaters[1].x; // left wing: strong side
+    };
+    expect(new Set([wingX('boards'), wingX('swing'), wingX('stretch')].map((x) => x.toFixed(0))).size).toBeGreaterThan(1);
+  });
+
+  it('only applies in the breakout zone: further up the ice a plan plays exactly like carry', () => {
+    const play = (plan: 'carry' | 'stretch', y: number): string => {
+      const w = breakWorld(plan, 0);
+      w.skaters[0].y = y;
+      for (let i = 0; i < 120; i++) step(w, [idle, idle], DT);
+      return JSON.stringify(w.skaters.map((s) => [s.x.toFixed(3), s.y.toFixed(3)]));
+    };
+    expect(play('stretch', RINK.h / 2 - 20)).toBe(play('carry', RINK.h / 2 - 20));
+    expect(play('stretch', 170)).not.toBe(play('carry', 170));
+  });
+});
+
 describe('AI and control', () => {
   const aiWorld = (seed = 1): World => {
     const w = createWorld(seed);

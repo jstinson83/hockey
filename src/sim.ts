@@ -1,4 +1,4 @@
-import { aiIntent, newAi, type Role } from './ai';
+import { aiIntent, newAi, type Breakout, type Role } from './ai';
 import { collideCircles, collideNet, collideStatic, defendedNet, bounceOffBoards, NETS } from './collide';
 import { handleButtons } from './actions';
 import { advancePhase, checkGoal, placeForFaceoff } from './flow';
@@ -11,6 +11,8 @@ import type { Skater, World } from './sim-types';
 
 export { RINK, TUNING, defendedNet, goalieRadius };
 export type { Team };
+export type { Breakout };
+export { BREAKOUTS } from './ai';
 export type { Game, Goalie, Phase, Puck, Skater, World } from './sim-types';
 
 const ROLES: Role[] = ['C', 'L', 'R'];
@@ -27,7 +29,7 @@ function makeSkater(team: Team, slot: number): Skater {
  * A fresh game. `perTeam` skaters a side (3v3 by default); skaters[0..perTeam-1] are red,
  * the rest blue, centre first. Both teams start human-driven; the caller sets `humans`.
  */
-export function createWorld(seed = 1, opts: { perTeam?: number } = {}): World {
+export function createWorld(seed = 1, opts: { perTeam?: number; breakout?: [Breakout, Breakout] } = {}): World {
   const perTeam = opts.perTeam ?? 3;
   const skaters: Skater[] = [];
   for (const team of [0, 1] as const) for (let k = 0; k < perTeam; k++) skaters.push(makeSkater(team, k));
@@ -45,6 +47,7 @@ export function createWorld(seed = 1, opts: { perTeam?: number } = {}): World {
     switchHeld: [false, false],
     switchRank: [0, 0],
     switchSince: [99, 99],
+    breakout: opts.breakout ?? ['carry', 'carry'],
   };
   placeForFaceoff(world);
   return world;

@@ -23,6 +23,7 @@ No timeline or order within groups yet.
 - [ ] Modern touches: stamina meter, shot-power meter
 
 ### AI
+- [ ] Strategies (tuning is only meaningful once there are several): breakouts are in; next offence (rush / cycle / shoot-first) and defence (man / zone / forecheck), then per-team selection and tuning them against each other
 - [ ] Cycling and set plays (the original AI idea)
 - [ ] Difficulty setting
 - [ ] 5v5
