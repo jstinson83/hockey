@@ -13,6 +13,7 @@ const newWorld = () => createWorld((Math.random() * 2 ** 31) | 0); // random see
 let world = newWorld();
 let camera = createCamera(world);
 let paused = false;
+let demo = false; // AI plays both teams; handy for watching without a controller
 
 addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') {
@@ -20,6 +21,7 @@ addEventListener('keydown', (e) => {
     else void document.documentElement.requestFullscreen();
   }
   if (e.code === 'KeyP' || (e.code === 'Escape' && !e.repeat)) paused = !paused;
+  if (e.code === 'KeyD') demo = !demo;
   if (e.code === 'KeyR') {
     world = newWorld();
     camera = createCamera(world);
@@ -48,6 +50,9 @@ function frame(now: number): void {
 
   if (!paused) {
     acc += frameDt;
+    // Red is always you (keyboard or pad 1); blue is a second human only if pad 2 is connected.
+    world.humans[0] = !demo;
+    world.humans[1] = !demo && !!navigator.getGamepads()[1];
     while (acc >= DT) {
       step(world, [readIntent(P1_KEYS, 0), readIntent(null, 1)], DT);
       acc -= DT;

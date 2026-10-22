@@ -1,4 +1,4 @@
-import { GOAL, RINK, TUNING } from './sim-constants';
+import { GOAL, RINK, TUNING, type Team } from './sim-constants';
 
 export interface Contact {
   nx: number; // unit normal pointing from the wall into the rink
@@ -194,4 +194,14 @@ export function firstNetCrossing(sx: number, sy: number, px: number, py: number,
     if (t >= 0 && t <= 1 && s >= 0 && s <= 1 && t < best) best = t;
   }
   return best;
+}
+
+/** The net a team shoots at: red attacks the top net, blue the bottom. */
+export function attackedNet(team: Team): Net {
+  return team === 0 ? NETS[0] : NETS[1];
+}
+
+/** The net a team defends: red defends the bottom net, blue the top. */
+export function defendedNet(team: Team): Net {
+  return team === 0 ? NETS[1] : NETS[0];
 }

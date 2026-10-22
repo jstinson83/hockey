@@ -1,18 +1,22 @@
+import { aiIntent, newAi, type AiState, type Role } from './ai';
 import {
-  bounceOffBoards, collideCircles, collideNet, collideStatic, firstNetCrossing, NETS, type Net,
+  attackedNet, bounceOffBoards, collideCircles, collideNet, collideStatic, defendedNet,
+  firstNetCrossing, NETS,
 } from './collide';
 import type { Intent } from './input';
-import { GAME, GOAL, RINK, TEAM_COLORS, TUNING } from './sim-constants';
+import { nextRandom } from './rng';
+import { GAME, GOAL, RINK, TEAM_COLORS, TUNING, type Team } from './sim-constants';
 
-export { RINK, TUNING };
-
-export type Team = 0 | 1;
+export { RINK, TUNING, defendedNet };
+export type { Team };
 
 export interface Skater {
   x: number; y: number;
   vx: number; vy: number;
   facing: number;      // radians
   team: Team;
+  role: Role;
+  ai: AiState;         // memory for when the AI is driving this skater
   charge: number;      // seconds the action button has been held with the puck
   actionHeld: boolean; // previous frame's shoot-button state, for press/release detection
   passHeld: boolean;
@@ -58,17 +62,16 @@ export interface World {
   goalies: Goalie[]; // indexed by team
   puck: Puck;
   game: Game;
-  rng: number; // PRNG state; shot spread draws from it, keeping the sim deterministic per seed
+  rng: number; // PRNG state; shot spread and AI decisions draw from it, keeping the sim deterministic per seed
+  humans: [boolean, boolean]; // does a person drive each team's controlled skater? (false = AI plays that team)
+  controlled: [number, number]; // skater index each team's human controls; follows the puck
 }
 
-/** The net a team defends: red defends the bottom net, blue the top. */
-export function defendedNet(team: Team): Net {
-  return team === 0 ? NETS[1] : NETS[0];
-}
+const ROLES: Role[] = ['C', 'L', 'R'];
 
-function makeSkater(team: Team, y: number, facing: number): Skater {
+function makeSkater(team: Team, slot: number): Skater {
   return {
-    x: RINK.w / 2, y, vx: 0, vy: 0, facing, team,
+    x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, facing: 0, team, role: ROLES[slot % 3], ai: newAi(),
     charge: 0, actionHeld: false, passHeld: false, pressedWithoutPuck: false, lockout: 0,
     boost: 0, checking: 0, stun: 0, color: TEAM_COLORS[team],
   };
@@ -83,9 +86,16 @@ function makeGoalie(team: Team): Goalie {
   };
 }
 
-export function createWorld(seed = 1): World {
+/**
+ * A fresh game. `perTeam` skaters a side (3v3 by default); skaters[0..perTeam-1] are red,
+ * the rest blue, centre first. Both teams start human-driven; the caller sets `humans`.
+ */
+export function createWorld(seed = 1, opts: { perTeam?: number } = {}): World {
+  const perTeam = opts.perTeam ?? 3;
+  const skaters: Skater[] = [];
+  for (const team of [0, 1] as const) for (let k = 0; k < perTeam; k++) skaters.push(makeSkater(team, k));
   const world: World = {
-    skaters: [makeSkater(0, 0, -Math.PI / 2), makeSkater(1, 0, Math.PI / 2)],
+    skaters,
     goalies: [makeGoalie(0), makeGoalie(1)],
     puck: { x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, carrier: -1 },
     game: {
@@ -93,20 +103,34 @@ export function createWorld(seed = 1): World {
       clock: GAME.periodSeconds, score: [0, 0], lastScorer: null,
     },
     rng: seed | 0,
+    humans: [true, true],
+    controlled: [0, perTeam],
   };
   placeForFaceoff(world);
   return world;
 }
 
+/** Add a skater (tests and scenarios). It starts with no human and takes the next free role. */
+export function addSkater(world: World, team: Team, x: number, y: number): Skater {
+  const slot = world.skaters.filter((s) => s.team === team).length;
+  const s = makeSkater(team, slot);
+  s.x = x;
+  s.y = y;
+  world.skaters.push(s);
+  return s;
+}
+
 /** Everyone back to their faceoff spots with the puck at centre ice. */
 function placeForFaceoff(world: World): void {
   const mid = RINK.h / 2;
-  world.skaters.forEach((s, i) => {
-    const below = i === 0;
-    s.x = RINK.w / 2;
-    s.y = mid + (below ? 14 : -14);
+  const slots = [0, 0];
+  world.skaters.forEach((s) => {
+    const k = slots[s.team]++;
+    const sign = s.team === 0 ? 1 : -1; // red starts below centre, blue above
+    s.x = RINK.w / 2 + (k === 0 ? 0 : k === 1 ? -20 : 20);
+    s.y = mid + sign * (k === 0 ? 14 : 30);
     s.vx = s.vy = 0;
-    s.facing = below ? -Math.PI / 2 : Math.PI / 2;
+    s.facing = s.team === 0 ? -Math.PI / 2 : Math.PI / 2;
     s.charge = 0;
     s.actionHeld = false;
     s.passHeld = false;
@@ -115,9 +139,12 @@ function placeForFaceoff(world: World): void {
     s.boost = 0;
     s.checking = 0;
     s.stun = 0;
+    s.ai = newAi();
   });
   world.goalies.forEach((g, i) => Object.assign(g, makeGoalie(i as Team)));
   Object.assign(world.puck, { x: RINK.w / 2, y: mid, vx: 0, vy: 0, carrier: -1 });
+  // Each human starts on their centre.
+  world.controlled = [world.skaters.findIndex((s) => s.team === 0), world.skaters.findIndex((s) => s.team === 1)];
 }
 
 function startFaceoff(world: World): void {
@@ -126,10 +153,19 @@ function startFaceoff(world: World): void {
   world.game.timer = GAME.faceoffSeconds;
 }
 
-/** Fixed-timestep step. Deterministic: same world + same intents => same result. */
-export function step(world: World, intents: Intent[], dt: number): void {
+/**
+ * Fixed-timestep step. Deterministic: same world + same human inputs => same result.
+ * `human` is the stick input per team (red, blue) for that team's controlled skater;
+ * every other skater (or every skater on a team with no human) is driven by the AI.
+ */
+export function step(world: World, human: Intent[], dt: number): void {
   const { skaters, goalies, game } = world;
   const controllable = game.phase === 'play' || game.phase === 'goal';
+
+  updateControlled(world);
+  const intents: (Intent | undefined)[] = skaters.map((s, i) =>
+    world.humans[s.team] && world.controlled[s.team] === i ? human[s.team] : aiIntent(world, i, dt),
+  );
 
   skaters.forEach((s, i) => moveSkater(s, controllable ? intents[i] : undefined, dt));
 
@@ -167,6 +203,40 @@ export function step(world: World, intents: Intent[], dt: number): void {
 
   checkGoal(world);
   advancePhase(world, dt);
+}
+
+/**
+ * Each human controls the puck carrier if their team has it, else the teammate nearest the
+ * puck (with a little hysteresis so control doesn't flicker). The held-button state moves
+ * with control so a held shoot button doesn't read as a fresh tap on the new skater.
+ */
+function updateControlled(world: World): void {
+  const { skaters, puck } = world;
+  for (const team of [0, 1] as const) {
+    const cur = world.controlled[team];
+    let next = cur;
+    if (puck.carrier >= 0 && skaters[puck.carrier].team === team) {
+      next = puck.carrier;
+    } else {
+      const px = puck.x + puck.vx * 0.2;
+      const py = puck.y + puck.vy * 0.2;
+      let best = cur;
+      let bd = Math.hypot(skaters[cur].x - px, skaters[cur].y - py) - 3; // stay unless clearly worse
+      skaters.forEach((s, j) => {
+        if (s.team !== team) return;
+        const d = Math.hypot(s.x - px, s.y - py);
+        if (d < bd) { bd = d; best = j; }
+      });
+      next = best;
+    }
+    if (next !== cur) {
+      const a = skaters[cur];
+      const b = skaters[next];
+      b.actionHeld = a.actionHeld; b.passHeld = a.passHeld; b.pressedWithoutPuck = a.pressedWithoutPuck;
+      a.actionHeld = false; a.passHeld = false; a.pressedWithoutPuck = false; a.charge = 0;
+      world.controlled[team] = next;
+    }
+  }
 }
 
 function moveSkater(s: Skater, intent: Intent | undefined, dt: number): void {
@@ -373,19 +443,6 @@ function clamp01(v: number): number {
 
 function wrapAngle(a: number): number {
   return Math.atan2(Math.sin(a), Math.cos(a));
-}
-
-/** Deterministic PRNG in [0, 1), advancing the world's state (mulberry32). */
-function nextRandom(world: World): number {
-  world.rng = (world.rng + 0x6d2b79f5) | 0;
-  let t = Math.imul(world.rng ^ (world.rng >>> 15), 1 | world.rng);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-}
-
-/** The net a team shoots at: red attacks the top net, blue the bottom. */
-function attackedNet(team: Team): Net {
-  return team === 0 ? NETS[0] : NETS[1];
 }
 
 /**

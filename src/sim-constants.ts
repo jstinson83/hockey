@@ -4,6 +4,8 @@ export const RINK = { w: 85, h: 200, corner: 28 };
 /** Goal geometry. Nets sit behind the goal line, centred on the rink. Oversized vs. the real thing on purpose. */
 export const GOAL = { line: 12, width: 14, depth: 5, height: 4, crease: 12 };
 
+export type Team = 0 | 1;
+
 /** Game flow. Team 0 (red, P1) defends the bottom net and attacks the top; team 1 (blue) the reverse. */
 export const GAME = { periods: 3, periodSeconds: 120, overtimeSeconds: 120, faceoffSeconds: 1.5, goalSeconds: 2.5 };
 export const TEAM_COLORS = ['#d33', '#36c'] as const;
@@ -58,15 +60,27 @@ export const TUNING = {
   netBounce: 0.3,       // puck restitution off the net frame
   maxPuckSpeed: 160,
   goalieRadius: 2.4,
-  goalieDownRadius: 3.0, // butterfly: wider, can't move sideways
+  goalieDownRadius: 3.2, // butterfly: wider, can't move sideways
   goalieSpeed: 28,
-  goalieReaction: 0.15,  // s: lag in tracking the puck, and delay before committing to a dive
+  goalieReaction: 0.13,  // s: lag in tracking the puck, and delay before committing to a dive
   goalieDiveTrigger: 45, // puck speed that counts as a shot
   goalieDiveRange: 30,  // only dives to shots this close to the goal line
-  goalieDiveSpeed: 30,
+  goalieDiveSpeed: 32,
   goalieDiveTime: 0.3,  // s of sideways slide
   goalieDownTime: 0.75, // s spent down before recovering
   goalieBounce: 0.35,   // restitution off the goalie (rebounds)
+
+  // AI (skaters the human isn't controlling)
+  aiSpeed: 0.92,        // fraction of maxSpeed the AI steers for
+  aiArrive: 3.0,        // slows to a stop within maxSpeed*aiSpeed/aiArrive units of its target
+  aiShootRange: 52,     // carrier considers shooting inside this distance to the net
+  aiShootChance: 0.45,  // per decision (a few per second) once in range with a lane
+  aiAimMistake: 0.3,    // chance a shot is aimed at the goalie's side instead of away from it
+  aiLaneRadius: 3,      // an opponent this close to a shot/pass line blocks it
+  aiPassCooldown: 0.9,  // s between passes
+  aiPressure: 9,        // an opponent this close means the carrier is under pressure
+  aiBurstCooldown: 0.55,
+  aiCheckChance: 0.7,   // per decision, when within reach of the carrier
 
   // Checking. A tap of the shoot button without the puck opens a check window: a hit
   // inside it knocks the puck loose at a much lower closing speed, shoves the victim and

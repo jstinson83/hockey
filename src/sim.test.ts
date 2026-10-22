@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Intent } from './input';
-import { createWorld, step, type World } from './sim';
+import { addSkater, createWorld, step, type World } from './sim';
 import { GAME, GOAL, RINK, TUNING } from './sim-constants';
 import { NETS } from './collide';
 
@@ -14,7 +14,7 @@ function run(world: World, seconds: number, intents: Intent[] = [idle, idle]): v
 
 /** A world already in open play, skaters out of the way. */
 function liveWorld(): World {
-  const w = createWorld();
+  const w = createWorld(1, { perTeam: 1 });
   w.game.phase = 'play';
   w.skaters[0].x = 10; w.skaters[0].y = RINK.h / 2;
   w.skaters[1].x = RINK.w - 10; w.skaters[1].y = RINK.h / 2;
@@ -93,10 +93,8 @@ describe('wrapping behind the net', () => {
 });
 
 describe('goalie', () => {
-  function shoot(targetX: number, speed: number): World {
+  function shoot(targetX: number, speed: number, fromX = CX - 18, fromY = 42): World {
     const w = liveWorld();
-    const fromX = CX - 18;
-    const fromY = 42;
     const dx = targetX - fromX;
     const dy = GOAL.line - fromY;
     const len = Math.hypot(dx, dy);
@@ -112,7 +110,8 @@ describe('goalie', () => {
 
   it('can be beaten, and also makes saves, across a sweep of slap shots', () => {
     const results: boolean[] = [];
-    for (let tx = CX - 6.5; tx <= CX + 6.5; tx += 1.3) results.push(shoot(tx, 125).game.score[0] > 0);
+    // From close in on the side: beatable with placement, but the goalie still gets some.
+    for (let tx = CX - 6.5; tx <= CX + 6.5; tx += 1.3) results.push(shoot(tx, 125, CX - 20, 24).game.score[0] > 0);
     expect(results.some(Boolean)).toBe(true);
     expect(results.some((g) => !g)).toBe(true);
   });
@@ -120,7 +119,7 @@ describe('goalie', () => {
 
 describe('game flow', () => {
   it('plays three periods, then overtime, then ends tied', () => {
-    const w = createWorld();
+    const w = createWorld(1, { perTeam: 1 });
     run(w, GAME.faceoffSeconds + 0.1);
     expect(w.game.phase).toBe('play');
     run(w, GAME.periodSeconds + 0.1);
@@ -225,8 +224,7 @@ describe('buttons', () => {
 
   it('a pass leads toward a teammate in the cone', () => {
     const w = liveWorld();
-    const mate = { ...w.skaters[0], x: CX + 12, y: 90, vx: 0, vy: 0 };
-    w.skaters.push(mate);
+    addSkater(w, 0, CX + 12, 90); // a red teammate, AI-driven
     const s = w.skaters[0];
     s.x = CX; s.y = 120; s.facing = -Math.PI / 2 + 0.2; w.puck.carrier = 0;
     step(w, [tap(false, true), idle], DT);
@@ -239,7 +237,7 @@ describe('buttons', () => {
 describe('shots', () => {
   /** Red shoots from (x, y) facing `facing`, returns the world with the puck just released. */
   function release(seed: number, x: number, y: number, facing: number, holdSeconds = 0): World {
-    const w = createWorld(seed);
+    const w = createWorld(seed, { perTeam: 1 });
     w.game.phase = 'play';
     const s = w.skaters[0];
     s.x = x; s.y = y; s.facing = facing; w.puck.carrier = 0;
@@ -300,5 +298,101 @@ describe('shots', () => {
       if (w.game.score[0] > 0) goals++;
     }
     expect(goals).toBeLessThan(n);
+  });
+});
+
+describe('AI and control', () => {
+  const aiWorld = (seed = 1): World => {
+    const w = createWorld(seed);
+    w.humans = [false, false];
+    w.game.phase = 'play';
+    return w;
+  };
+
+  it('plays on its own: the puck changes hands, nobody leaves the ice or enters a net', () => {
+    const w = aiWorld(2);
+    let carriers = 0;
+    let last = -2;
+    for (let i = 0; i < 60 * 60; i++) {
+      step(w, [idle, idle], DT);
+      if (w.puck.carrier !== last) { carriers++; last = w.puck.carrier; }
+      for (const s of w.skaters) {
+        expect(Number.isFinite(s.x) && Number.isFinite(s.y)).toBe(true);
+        expect(s.x).toBeGreaterThan(0); expect(s.x).toBeLessThan(RINK.w);
+        expect(s.y).toBeGreaterThan(0); expect(s.y).toBeLessThan(RINK.h);
+        for (const net of NETS) {
+          const depth = (s.y - net.gy) * net.dir;
+          expect(s.x > net.x0 && s.x < net.x1 && depth > 0 && depth < GOAL.depth).toBe(false);
+        }
+      }
+    }
+    expect(carriers).toBeGreaterThan(5);
+  });
+
+  it('is deterministic per seed', () => {
+    const play = (seed: number): string => {
+      const w = aiWorld(seed);
+      for (let i = 0; i < 60 * 30; i++) step(w, [idle, idle], DT);
+      return JSON.stringify([w.game.score, w.puck.x.toFixed(3), w.skaters.map((s) => s.x.toFixed(3))]);
+    };
+    expect(play(7)).toBe(play(7));
+    expect(play(7)).not.toBe(play(8));
+  });
+
+  it('the nearest skater goes for a loose puck and picks it up', () => {
+    const w = aiWorld();
+    // Red's wing is the nearest red skater to a puck deep in red's right side.
+    w.puck.x = CX + 25; w.puck.y = RINK.h / 2 + 22; w.puck.vx = w.puck.vy = 0;
+    for (let i = 0; i < 60 * 4 && w.puck.carrier < 0; i++) step(w, [idle, idle], DT);
+    expect(w.puck.carrier).toBeGreaterThanOrEqual(0);
+  });
+
+  it('a carrier in range with a clear lane shoots (or scores) within a couple of seconds', () => {
+    const w = aiWorld(3);
+    const c = w.skaters[0]; // red centre
+    c.x = CX; c.y = 36; c.vx = c.vy = 0; c.facing = -Math.PI / 2;
+    w.puck.carrier = 0;
+    // Clear the ice of defenders so the lane is open.
+    w.skaters.forEach((s) => { if (s.team === 1) { s.x = 8; s.y = RINK.h - 20; } });
+    let released = false;
+    for (let i = 0; i < 60 * 2 && !released; i++) {
+      step(w, [idle, idle], DT);
+      released = w.puck.carrier !== 0;
+    }
+    expect(released).toBe(true);
+  });
+
+  it('human control follows the puck: the carrier, else the nearest teammate', () => {
+    const w = createWorld(1);
+    w.humans = [true, false];
+    w.game.phase = 'play';
+    const red = w.skaters.filter((s) => s.team === 0);
+    red.forEach((s) => { s.x = CX; s.y = 130; });
+    red[2].x = CX + 30; red[2].y = 60; // far wing is nearest to the puck
+    w.puck.x = CX + 32; w.puck.y = 55; w.puck.vx = w.puck.vy = 0;
+    w.skaters.filter((s) => s.team === 1).forEach((s) => { s.x = 10; s.y = 20; });
+    step(w, [idle, idle], DT);
+    expect(w.controlled[0]).toBe(w.skaters.indexOf(red[2]));
+
+    w.puck.carrier = w.skaters.indexOf(red[1]);
+    step(w, [idle, idle], DT);
+    expect(w.controlled[0]).toBe(w.skaters.indexOf(red[1])); // carrier always controlled
+  });
+
+  it('a held shoot button follows control to the new skater instead of firing a burst', () => {
+    const w = createWorld(1);
+    w.humans = [true, false];
+    w.game.phase = 'play';
+    const hold: Intent = { x: 0, y: 0, action: true, pass: false };
+    // Hold the button on the initial skater, then hand the puck to a teammate.
+    step(w, [hold, idle], DT);
+    const first = w.controlled[0];
+    expect(w.skaters[first].actionHeld).toBe(true);
+    const mate = w.skaters.findIndex((s, i) => s.team === 0 && i !== first);
+    w.skaters[mate].x = w.puck.x; w.skaters[mate].y = w.puck.y;
+    w.puck.carrier = mate;
+    step(w, [hold, idle], DT);
+    expect(w.controlled[0]).toBe(mate);
+    expect(w.skaters[mate].boost).toBe(0); // no burst from the handover
   });
 });

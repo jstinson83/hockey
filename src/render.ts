@@ -436,7 +436,10 @@ function bakeWalls(target: CanvasRenderingContext2D, half: 'far' | 'near', oy: n
 function drawEntities(ctx: CanvasRenderingContext2D, world: World, cam: Camera): void {
   // Painter's algorithm: things lower on the ice are nearer the viewer.
   type Item = { y: number; draw: () => void };
-  const items: Item[] = world.skaters.map((s) => ({ y: s.y, draw: () => drawSkater(ctx, cam, s) }));
+  const items: Item[] = world.skaters.map((s, i) => ({
+    y: s.y,
+    draw: () => drawSkater(ctx, cam, s, world.humans[s.team] && world.controlled[s.team] === i),
+  }));
   for (const g of world.goalies) items.push({ y: g.y, draw: () => drawGoalie(ctx, cam, g) });
   items.push({ y: world.puck.y, draw: () => drawPuck(ctx, cam, world.puck) });
   // Far net is behind everything; near net's back is the closest thing on the ice.
@@ -449,13 +452,15 @@ function drawEntities(ctx: CanvasRenderingContext2D, world: World, cam: Camera):
 /**
  * The camera follows the puck, so a skater can end up off-screen. Mark where
  * they are with an arrow on the edge nearest them (the full rink width is
- * always visible, so only top/bottom are possible). Once the AI teammates
- * exist this should be limited to the skater each human controls.
+ * always visible, so only top/bottom are possible). Only for the skater each
+ * human controls.
  */
 function drawOffscreenArrows(ctx: CanvasRenderingContext2D, world: World, cam: Camera): void {
   const bodyPx = (VIEW.bodyHeight + TUNING.skaterRadius) * S * T;
   const m = VIEW.arrowMargin;
-  for (const s of world.skaters) {
+  for (const team of [0, 1] as const) {
+    if (!world.humans[team]) continue;
+    const s = world.skaters[world.controlled[team]];
     const { sx, sy } = project(cam, s.x, s.y);
     const dir = sy < 0 ? -1 : sy - bodyPx > VIEW.height ? 1 : 0;
     if (dir === 0) continue;
@@ -567,10 +572,10 @@ function controlStar(ctx: CanvasRenderingContext2D, sx: number, sy: number): voi
   ctx.stroke();
 }
 
-function drawSkater(ctx: CanvasRenderingContext2D, cam: Camera, s: World['skaters'][number]): void {
+function drawSkater(ctx: CanvasRenderingContext2D, cam: Camera, s: World['skaters'][number], controlled: boolean): void {
   const r = TUNING.skaterRadius;
   const { sx, sy } = project(cam, s.x, s.y);
-  controlStar(ctx, sx, sy);
+  if (controlled) controlStar(ctx, sx, sy);
   shadow(ctx, cam, s.x, s.y, r);
 
   // Upright body: a rounded box standing on the shadow. Faded while stunned.

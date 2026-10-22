@@ -26,6 +26,11 @@ Browsers only report a gamepad after a button press on it.
 - `src/sim.ts` also owns the game flow (faceoff -> play -> goal -> faceoff, 3x2:00 periods,
   sudden-death overtime, final) and the goalies: physical blockers with a reaction delay and a
   butterfly dive, so saves come from collisions and are tunable via `TUNING.goalie*`.
+- `src/ai.ts` - skater AI (3v3 by default). Team plan (support / defend / chase / press anchors by
+  role: C, L, R), carrier decisions (shoot / pass / carry, a few times a second, seeded random), and
+  steering that emits the same `Intent` a human would. Each human controls one skater per team
+  (the carrier, else the nearest to the puck); everyone else is AI. Blue is AI unless a second pad
+  is connected; `D` toggles an AI-vs-AI demo.
 - `src/sim-constants.ts` - rink dimensions and every feel-related `TUNING` value.
 - `src/collide.ts` - circle-vs-boards (rounded rink) and circle-vs-circle. No physics
   engine on purpose: arcade feel and determinism matter more than realism.

@@ -1,0 +1,346 @@
+import { attackedNet, defendedNet, NETS } from './collide';
+import type { Intent } from './input';
+import { nextRandom } from './rng';
+import type { Skater, World } from './sim';
+import { GOAL, RINK, TUNING } from './sim-constants';
+
+/**
+ * Skater AI, in three layers:
+ *  1. Team plan: what state is the game in (we have the puck / they do / it's loose)
+ *     and which role does this skater play in it. Each role has an anchor point that
+ *     depends on the puck and the nets; the nearest skater chases or presses instead.
+ *  2. Carrier decisions: a few times a second, shoot / pass / carry, with some randomness.
+ *  3. Execution: steer toward a target with separation from other skaters, using the same
+ *     Intent (stick + buttons) a human would, so the AI obeys the same physics.
+ * Everything is a pure function of the world (and its seeded RNG), so it stays deterministic.
+ */
+
+export type Role = 'C' | 'L' | 'R';
+
+export interface AiState {
+  think: number;         // s until the next decision
+  shotHold: number;      // s left holding the shoot button on a shot
+  releaseFrames: number; // frames of "released" to send after a hold so the shot fires
+  aimX: number;
+  aimY: number;          // where the current shot is aimed
+  pulse: number;         // frames left holding a burst / check tap
+  burstCd: number;
+  passCd: number;
+}
+
+export function newAi(): AiState {
+  return { think: 0, shotHold: 0, releaseFrames: 0, aimX: 0, aimY: 0, pulse: 0, burstCd: 0, passCd: 0 };
+}
+
+const CX = RINK.w / 2;
+const MID = RINK.h / 2;
+
+type Point = { x: number; y: number };
+
+const intent = (x: number, y: number, action = false, pass = false): Intent => ({ x, y, action, pass });
+const dist = (a: Point, b: Point): number => Math.hypot(a.x - b.x, a.y - b.y);
+const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
+
+/** How far toward the attacked end a y is, in world units from centre ice. */
+function progress(team: Skater['team'], y: number): number {
+  return (y - MID) * attackedNet(team).dir;
+}
+
+function segDist(p: Point, a: Point, b: Point): number {
+  const sx = b.x - a.x;
+  const sy = b.y - a.y;
+  const len2 = sx * sx + sy * sy;
+  const t = len2 === 0 ? 0 : clamp(((p.x - a.x) * sx + (p.y - a.y) * sy) / len2, 0, 1);
+  return Math.hypot(p.x - (a.x + sx * t), p.y - (a.y + sy * t));
+}
+
+/** Is an opponent close enough to the line a -> b to block a shot or pass? */
+function laneBlocked(world: World, team: Skater['team'], a: Point, b: Point): boolean {
+  return world.skaters.some((o) => o.team !== team && segDist(o, a, b) < TUNING.aiLaneRadius);
+}
+
+function nearestOpponent(world: World, team: Skater['team'], p: Point): number {
+  let best = Infinity;
+  for (const o of world.skaters) if (o.team !== team) best = Math.min(best, dist(o, p));
+  return best;
+}
+
+/** Closest skater of `team` to a point; skaters still locked out of the puck are skipped unless `eligibleOnly` is off. */
+function closestTo(world: World, team: Skater['team'], p: Point, eligibleOnly = true): number {
+  let best = -1;
+  let bd = Infinity;
+  world.skaters.forEach((m, j) => {
+    if (m.team !== team || (eligibleOnly && m.lockout > 0)) return;
+    const d = dist(m, p);
+    if (d < bd) { bd = d; best = j; }
+  });
+  return best >= 0 || !eligibleOnly ? best : closestTo(world, team, p, false);
+}
+
+/** Keep an anchor on the ice and out of (and away from the mouth of) the nets. */
+function keepIn(x: number, y: number): Point {
+  let px = clamp(x, 8, RINK.w - 8);
+  let py = clamp(y, 8, RINK.h - 8);
+  for (const net of NETS) {
+    if (Math.abs(px - CX) < GOAL.width / 2 + 4 && (py - net.gy) * net.dir > -5) py = net.gy - net.dir * 6;
+  }
+  return { x: px, y: py };
+}
+
+/** Where the support roles stand when we have (or are about to have) the puck. */
+function supportAnchor(s: Skater, carrier: Point): Point {
+  const net = attackedNet(s.team);
+  const fwd = net.dir; // toward the attacked end
+  const side = s.role === 'L' ? -1 : 1;
+  if (progress(s.team, carrier.y) > 25) {
+    // Offensive zone: C in the slot, wings wide and low.
+    if (s.role === 'C') return keepIn(CX, net.gy - fwd * 20);
+    return keepIn(CX + side * 24, net.gy - fwd * 16);
+  }
+  // Rush / breakout: wings take the lanes just ahead of the puck, C trails.
+  if (s.role === 'C') return keepIn(CX, carrier.y - fwd * 10);
+  return keepIn(CX + side * 22, carrier.y + fwd * 6);
+}
+
+/** Where the defending roles stand when they have the puck: C goal-side of it, wings on opponents. */
+function defendAnchor(world: World, s: Skater, puck: Point, carrierIdx: number): Point {
+  const own = defendedNet(s.team);
+  const goal = { x: CX, y: own.gy };
+  if (s.role === 'C') {
+    const d = dist(puck, goal) || 1;
+    return keepIn(goal.x + ((puck.x - goal.x) / d) * 16, goal.y + ((puck.y - goal.y) / d) * 16);
+  }
+  const marks = world.skaters.filter((o, j) => o.team !== s.team && j !== carrierIdx).sort((a, b) => a.x - b.x);
+  const mark = s.role === 'L' ? marks[0] : marks[marks.length - 1];
+  if (!mark) return keepIn(CX + (s.role === 'L' ? -16 : 16), own.gy - own.dir * 20);
+  const d = dist(mark, goal) || 1;
+  return keepIn(mark.x + ((goal.x - mark.x) / d) * 5, mark.y + ((goal.y - mark.y) / d) * 5);
+}
+
+/**
+ * Chasing something behind a net from the front: go round the side first, or the skater just
+ * pushes into the frame. (No real pathfinding; this is the one obstacle that matters.)
+ */
+function routeAroundNet(s: Skater, t: Point): Point {
+  for (const net of NETS) {
+    const targetBehind = (t.y - net.gy) * net.dir > 0;
+    const inFront = (s.y - net.gy) * net.dir < -3;
+    if (targetBehind && inFront) {
+      const side = s.x < CX ? -1 : 1;
+      return { x: CX + side * (GOAL.width / 2 + 6), y: net.gy };
+    }
+  }
+  return t;
+}
+
+function separation(world: World, s: Skater): Point {
+  let sx = 0;
+  let sy = 0;
+  for (const o of world.skaters) {
+    if (o === s) continue;
+    const d = dist(s, o);
+    if (d > 0 && d < 7) {
+      const w = (7 - d) / 7;
+      sx += ((s.x - o.x) / d) * w;
+      sy += ((s.y - o.y) / d) * w;
+    }
+  }
+  return { x: sx, y: sy };
+}
+
+/** Stick input that steers `s` toward a point, arriving smoothly, with separation mixed in. */
+function steer(world: World, s: Skater, t: Point, avoid = true): { x: number; y: number } {
+  const dx = t.x - s.x;
+  const dy = t.y - s.y;
+  const d = Math.hypot(dx, dy);
+  const top = TUNING.maxSpeed * TUNING.aiSpeed;
+  const sp = Math.min(top, d * TUNING.aiArrive);
+  let wx = d > 1e-6 ? (dx / d) * sp : 0;
+  let wy = d > 1e-6 ? (dy / d) * sp : 0;
+  if (avoid) {
+    const sep = separation(world, s);
+    wx += sep.x * 12;
+    wy += sep.y * 12;
+  }
+  let ix = (wx - s.vx) * 0.12;
+  let iy = (wy - s.vy) * 0.12;
+  const m = Math.hypot(ix, iy);
+  if (m > 1) { ix /= m; iy /= m; }
+  return { x: ix, y: iy };
+}
+
+export function aiIntent(world: World, i: number, dt: number): Intent {
+  const s = world.skaters[i];
+  const ai = s.ai;
+  if (world.game.phase !== 'play') {
+    ai.shotHold = 0; ai.releaseFrames = 0; ai.pulse = 0;
+    return intent(0, 0);
+  }
+  ai.burstCd = Math.max(0, ai.burstCd - dt);
+  ai.passCd = Math.max(0, ai.passCd - dt);
+  ai.think -= dt;
+
+  if (world.puck.carrier === i) return carrierIntent(world, i, dt);
+  ai.shotHold = 0;
+  ai.releaseFrames = 0;
+  return offPuckIntent(world, i);
+}
+
+function aimIntent(s: Skater, ai: AiState, action: boolean): Intent {
+  const dx = ai.aimX - s.x;
+  const dy = ai.aimY - s.y;
+  const d = Math.hypot(dx, dy) || 1;
+  return intent((dx / d) * 0.6, (dy / d) * 0.6, action);
+}
+
+function carrierIntent(world: World, i: number, dt: number): Intent {
+  const s = world.skaters[i];
+  const ai = s.ai;
+  const net = attackedNet(s.team);
+
+  // Mid-shot: keep aiming, hold the button, then release for a frame so it fires.
+  if (ai.releaseFrames > 0) {
+    ai.releaseFrames--;
+    return aimIntent(s, ai, false);
+  }
+  if (ai.shotHold > 0) {
+    ai.shotHold -= dt;
+    if (ai.shotHold <= 0) ai.releaseFrames = 1;
+    return aimIntent(s, ai, true);
+  }
+
+  if (ai.think <= 0) {
+    ai.think = 0.12 + nextRandom(world) * 0.12;
+
+    // Shoot? In range, in front of the net, with a lane (or very close), some of the time.
+    const d = dist(s, { x: CX, y: net.gy });
+    const inFront = (s.y - net.gy) * -net.dir > 0;
+    if (inFront && d < TUNING.aiShootRange) {
+      // Usually aim at the far side from the goalie, but not perfectly: a varying distance
+      // inside the posts, and now and then the wrong side.
+      const goalie = world.goalies[s.team === 0 ? 1 : 0];
+      const away = goalie.x < CX ? 1 : -1;
+      const side = nextRandom(world) < TUNING.aiAimMistake ? -away : away;
+      const aim = { x: CX + side * (1.5 + nextRandom(world) * 5), y: net.gy };
+      const clear = d < 22 || !laneBlocked(world, s.team, s, aim);
+      if (clear && nextRandom(world) < TUNING.aiShootChance) {
+        ai.aimX = aim.x;
+        ai.aimY = aim.y;
+        ai.shotHold = d > 32 ? 0.45 : 0.04; // slapshot from range, wrister up close
+        return aimIntent(s, ai, true);
+      }
+    }
+
+    // Pass?
+    const mate = choosePass(world, i);
+    if (mate) {
+      ai.passCd = TUNING.aiPassCooldown;
+      const dx = mate.x - s.x;
+      const dy = mate.y - s.y;
+      const l = Math.hypot(dx, dy) || 1;
+      return intent(dx / l, dy / l, false, true); // face the receiver and pass
+    }
+  }
+  return carryIntent(world, i);
+}
+
+/** Best open teammate to pass to, or null. Prefers up-ice and open; passes out of pressure. */
+function choosePass(world: World, i: number): Point | null {
+  const s = world.skaters[i];
+  if (s.ai.passCd > 0) return null;
+  const myProg = progress(s.team, s.y);
+  const pressured = nearestOpponent(world, s.team, s) < TUNING.aiPressure;
+  let best: Point | null = null;
+  let bestScore = 0;
+  for (let j = 0; j < world.skaters.length; j++) {
+    const m = world.skaters[j];
+    if (j === i || m.team !== s.team) continue;
+    const d = dist(s, m);
+    if (d < 8 || d > 75) continue;
+    if (laneBlocked(world, s.team, s, m)) continue;
+    const open = Math.min(15, nearestOpponent(world, s.team, m));
+    if (open < 6) continue;
+    const gain = progress(s.team, m.y) - myProg;
+    if (!(gain > 6 || (pressured && gain > -4))) continue;
+    const score = gain + open * 0.5 + (pressured ? 8 : 0);
+    if (score > bestScore) { best = m; bestScore = score; }
+  }
+  return best;
+}
+
+/** Skate the puck toward the slot in front of the net, bending around opponents in the way. */
+function carryIntent(world: World, i: number): Intent {
+  const s = world.skaters[i];
+  const net = attackedNet(s.team);
+  let tx = CX;
+  let ty = net.gy - net.dir * 18;
+  const d = Math.hypot(tx - s.x, ty - s.y) || 1;
+  const ux = (tx - s.x) / d;
+  const uy = (ty - s.y) / d;
+  for (const o of world.skaters) {
+    if (o.team === s.team) continue;
+    const rx = o.x - s.x;
+    const ry = o.y - s.y;
+    const od = Math.hypot(rx, ry);
+    const along = rx * ux + ry * uy;
+    if (od < 14 && along > 0) {
+      const lateral = ux * ry - uy * rx; // which side of my line the opponent is on
+      const away = lateral > 0 ? -1 : 1;
+      const w = 1 - od / 14;
+      tx += -uy * away * 9 * w;
+      ty += ux * away * 9 * w;
+    }
+  }
+  const t = keepIn(tx, ty);
+  const st = steer(world, s, t);
+  return intent(st.x, st.y);
+}
+
+/** Everything a skater does without the puck: chase, press, support, defend. */
+function offPuckIntent(world: World, i: number): Intent {
+  const s = world.skaters[i];
+  const ai = s.ai;
+  const puck = world.puck;
+  const carrier = puck.carrier >= 0 ? world.skaters[puck.carrier] : null;
+  const mineHas = !!carrier && carrier.team === s.team;
+  const pred = { x: clamp(puck.x + puck.vx * 0.25, 2, RINK.w - 2), y: clamp(puck.y + puck.vy * 0.25, 2, RINK.h - 2) };
+
+  let target: Point;
+  let chase = false;
+  let press = false;
+  if (!carrier) {
+    if (closestTo(world, s.team, pred) === i) {
+      target = routeAroundNet(s, pred);
+      chase = true;
+    } else {
+      target = progress(s.team, puck.y) > 0 ? supportAnchor(s, puck) : defendAnchor(world, s, puck, -1);
+    }
+  } else if (mineHas) {
+    target = supportAnchor(s, carrier);
+  } else if (closestTo(world, s.team, carrier, false) === i) {
+    target = routeAroundNet(s, { x: carrier.x + carrier.vx * 0.3, y: carrier.y + carrier.vy * 0.3 });
+    press = true;
+  } else {
+    target = defendAnchor(world, s, carrier, puck.carrier);
+  }
+
+  const st = steer(world, s, target, !(chase || press));
+
+  // Burst to close distance; tap to check when in reach of the carrier.
+  let action = false;
+  if (ai.pulse > 0) {
+    ai.pulse--;
+    action = true;
+  } else if (ai.think <= 0) {
+    ai.think = 0.12 + nextRandom(world) * 0.12;
+    if (ai.burstCd <= 0 && (chase || press)) {
+      const d = dist(s, target);
+      const reach = press && d < TUNING.aiPressure + 1;
+      if ((reach && nextRandom(world) < TUNING.aiCheckChance) || d > 16) {
+        ai.pulse = 2;
+        ai.burstCd = TUNING.aiBurstCooldown;
+      }
+    }
+  }
+  return intent(st.x, st.y, action);
+}
