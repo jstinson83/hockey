@@ -40,6 +40,19 @@ export type Breakout = (typeof BREAKOUTS)[number];
 export const NEUTRALS = ['man', 'trap', 'press'] as const;
 export type Neutral = (typeof NEUTRALS)[number];
 
+/**
+ * How a team works the puck once it is set up in the offensive zone (carrier past the blue line):
+ *  - set:      no plan; the centre takes the slot, wings stay wide and low (the original behaviour).
+ *  - shoot:    shoot first. The defence walk to the points, the centre screens the goalie and the
+ *              wings crash the posts for rebounds; the carrier shoots from much further out.
+ *  - cycle:    the carrier works the strong-side boards and the wing and centre rotate low behind
+ *              the play, swinging the puck down low rather than shooting from the perimeter.
+ *  - overload: three skaters crowd the strong side low, the far wing waits at the back post and the
+ *              far defence slides to the middle for a seam pass.
+ */
+export const OFFENCES = ['set', 'shoot', 'cycle', 'overload'] as const;
+export type Offence = (typeof OFFENCES)[number];
+
 export interface AiState {
   think: number;         // s until the next decision
   shotHold: number;      // s left holding the shoot button on a shot
@@ -149,6 +162,43 @@ function breakoutAnchor(plan: Breakout, s: Skater, carrier: Point): Point {
   }
 }
 
+/** Where a skater stands once the team is set up in the offensive zone; the carrier's side decides the strong side. */
+function offenceAnchor(plan: Offence, s: Skater, carrier: Point): Point {
+  const net = attackedNet(s.team);
+  const fwd = net.dir;
+  const side = sideOf(s.role);
+  const cSide = carrier.x < CX ? -1 : 1;
+  const wide = (sd: number, inset: number): number => (sd < 0 ? inset : RINK.w - inset);
+  const behind = net.gy + fwd * (GOAL.depth + 4); // just past the goal line, in the corner
+  const point = keepIn(CX + side * 20, MID + fwd * 52);
+  switch (plan) {
+    case 'shoot':
+      if (isDefence(s.role)) return point;
+      if (s.role === 'C') return keepIn(CX, net.gy - fwd * 9); // screen the goalie
+      return keepIn(CX + side * (GOAL.width / 2 + 3), net.gy - fwd * 8); // crash the posts
+    case 'cycle': {
+      if (isDefence(s.role)) return keepIn(CX + side * 26, MID + fwd * 46);
+      const strongWing = s.role === (cSide < 0 ? 'L' : 'R');
+      // Strong-side wing stays low in the corner, the centre supports high on the wall, the far wing is the slot option.
+      if (s.role === 'C') return keepIn(wide(cSide, 14), carrier.y - fwd * 12);
+      return strongWing ? keepIn(wide(cSide, 9), behind - fwd * 2) : keepIn(CX, net.gy - fwd * 16);
+    }
+    case 'overload': {
+      if (isDefence(s.role)) {
+        const strongD = side === cSide;
+        return strongD ? keepIn(CX + side * 14, MID + fwd * 52) : keepIn(CX, net.gy - fwd * 26); // far D slides to the seam
+      }
+      if (s.role === 'C') return keepIn(wide(cSide, 22), net.gy - fwd * 10);
+      const strongWing = side === cSide;
+      return strongWing ? keepIn(wide(cSide, 9), behind - fwd * 2) : keepIn(CX - cSide * 6, net.gy - fwd * 6); // far wing at the back post
+    }
+    default: // set
+      if (isDefence(s.role)) return point;
+      if (s.role === 'C') return keepIn(CX, net.gy - fwd * 20);
+      return keepIn(CX + side * 24, net.gy - fwd * 16);
+  }
+}
+
 /** Where the support roles stand when we have (or are about to have) the puck. */
 function supportAnchor(world: World, s: Skater, carrier: Point): Point {
   const net = attackedNet(s.team);
@@ -157,14 +207,10 @@ function supportAnchor(world: World, s: Skater, carrier: Point): Point {
   if (breakingOut(world, s.team, carrier)) return breakoutAnchor(world.breakout[s.team], s, carrier);
   if (isDefence(s.role)) {
     // Defence hold the points when we are set up in their end, otherwise trail the play.
-    if (progress(s.team, carrier.y) > 25) return keepIn(CX + side * 20, MID + fwd * 52);
+    if (progress(s.team, carrier.y) > 25) return offenceAnchor(world.offence[s.team], s, carrier);
     return keepIn(CX + side * 18, carrier.y - fwd * 14);
   }
-  if (progress(s.team, carrier.y) > 25) {
-    // Offensive zone: C in the slot, wings wide and low.
-    if (s.role === 'C') return keepIn(CX, net.gy - fwd * 20);
-    return keepIn(CX + side * 24, net.gy - fwd * 16);
-  }
+  if (progress(s.team, carrier.y) > 25) return offenceAnchor(world.offence[s.team], s, carrier);
   // Rush / breakout: wings take the lanes just ahead of the puck, C trails.
   if (s.role === 'C') return keepIn(CX, carrier.y - fwd * 10);
   return keepIn(CX + side * 22, carrier.y + fwd * 6);
@@ -323,7 +369,9 @@ function carrierIntent(world: World, i: number, dt: number): Intent {
     // Shoot? In range, in front of the net, with a lane (or very close), some of the time.
     const d = dist(s, { x: CX, y: net.gy });
     const inFront = (s.y - net.gy) * -net.dir > 0;
-    if (inFront && d < TUNING.aiShootRange) {
+    const plan = world.offence[s.team];
+    const range = plan === 'shoot' ? TUNING.aiShootRange * 1.25 : plan === 'cycle' ? TUNING.aiShootRange * 0.7 : TUNING.aiShootRange;
+    if (inFront && d < range) {
       // Usually aim at the far side from the goalie, but not perfectly: a varying distance
       // inside the posts, and now and then the wrong side.
       const goalie = world.goalies[s.team === 0 ? 1 : 0];
@@ -331,7 +379,7 @@ function carrierIntent(world: World, i: number, dt: number): Intent {
       const side = nextRandom(world) < TUNING.aiAimMistake ? -away : away;
       const aim = { x: CX + side * (1.5 + nextRandom(world) * 5), y: net.gy };
       const clear = d < 22 || !laneBlocked(world, s.team, s, aim);
-      if (clear && nextRandom(world) < TUNING.aiShootChance) {
+      if (clear && nextRandom(world) < TUNING.aiShootChance * (plan === 'shoot' ? 1.5 : plan === 'cycle' ? 0.6 : 1)) {
         ai.aimX = aim.x;
         ai.aimY = aim.y;
         ai.shotHold = d > 32 ? 0.45 : 0.04; // slapshot from range, wrister up close

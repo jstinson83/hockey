@@ -1,7 +1,7 @@
 import { isTextEntry, P1_KEYS, readIntent } from './input';
 import { createCamera, updateCamera } from './camera';
 import { drawPause, render, setupCanvas } from './render';
-import { BREAKOUTS, createWorld, NEUTRALS, step, TUNING } from './sim';
+import { BREAKOUTS, createWorld, NEUTRALS, OFFENCES, step, TUNING } from './sim';
 import { initTuningPanel } from './tuning-panel';
 
 const DT = 1 / 60; // fixed simulation timestep
@@ -12,7 +12,7 @@ const canvas = document.getElementById('game') as HTMLCanvasElement;
 const ctx = setupCanvas(canvas);
 const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(Math.random() * xs.length)];
 // Random seed (shot spread differs each game) and a random breakout and neutral-zone plan per team, for trying them out.
-const newWorld = () => createWorld((Math.random() * 2 ** 31) | 0, { breakout: [pick(BREAKOUTS), pick(BREAKOUTS)], neutral: [pick(NEUTRALS), pick(NEUTRALS)] });
+const newWorld = () => createWorld((Math.random() * 2 ** 31) | 0, { breakout: [pick(BREAKOUTS), pick(BREAKOUTS)], neutral: [pick(NEUTRALS), pick(NEUTRALS)], offence: [pick(OFFENCES), pick(OFFENCES)] });
 let world = newWorld();
 let camera = createCamera(world);
 const tuning = initTuningPanel(document.getElementById('tuning')!);
@@ -37,6 +37,11 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyV' || e.code === 'KeyM') {
     const team = e.code === 'KeyV' ? 0 : 1;
     world.neutral[team] = NEUTRALS[(NEUTRALS.indexOf(world.neutral[team]) + 1) % NEUTRALS.length];
+  }
+  // O / L do the same for the offensive-zone plans.
+  if (e.code === 'KeyO' || e.code === 'KeyL') {
+    const team = e.code === 'KeyO' ? 0 : 1;
+    world.offence[team] = OFFENCES[(OFFENCES.indexOf(world.offence[team]) + 1) % OFFENCES.length];
   }
   if (e.code === 'KeyR') {
     world = newWorld();

@@ -1,10 +1,11 @@
-import { aiIntent, newAi, type Breakout, type Neutral, type Role } from './ai';
+import { aiIntent, newAi, type Breakout, type Neutral, type Offence, type Role } from './ai';
 import { collideCircles, collideNet, collideStatic, defendedNet, bounceOffBoards, NETS } from './collide';
 import { handleButtons } from './actions';
 import { advancePhase, checkGoal, placeForFaceoff } from './flow';
 import { goalieRadius, makeGoalie, updateGoalie } from './goalie';
 import type { Intent } from './input';
 import { knockLoose, updatePuck } from './puck';
+import { nextRandom } from './rng';
 import { moveSkater, stunAndShove, updateControlled } from './skater';
 import { GAME, RINK, TEAM_COLORS, TUNING, type Team } from './sim-constants';
 import type { Skater, World } from './sim-types';
@@ -12,7 +13,7 @@ import type { Skater, World } from './sim-types';
 export { RINK, TUNING, defendedNet, goalieRadius };
 export type { Team };
 export type { Breakout, Neutral };
-export { BREAKOUTS, NEUTRALS } from './ai';
+export { BREAKOUTS, NEUTRALS, OFFENCES } from './ai';
 export type { Game, Goalie, Phase, Puck, Skater, World } from './sim-types';
 
 const ROLES: Role[] = ['C', 'L', 'R', 'LD', 'RD'];
@@ -29,7 +30,7 @@ function makeSkater(team: Team, slot: number): Skater {
  * A fresh game. `perTeam` skaters a side (5v5 by default); skaters[0..perTeam-1] are red,
  * the rest blue, centre first. Both teams start human-driven; the caller sets `humans`.
  */
-export function createWorld(seed = 1, opts: { perTeam?: number; breakout?: [Breakout, Breakout]; neutral?: [Neutral, Neutral] } = {}): World {
+export function createWorld(seed = 1, opts: { perTeam?: number; breakout?: [Breakout, Breakout]; neutral?: [Neutral, Neutral]; offence?: [Offence, Offence] } = {}): World {
   const perTeam = opts.perTeam ?? GAME.skatersPerTeam;
   const skaters: Skater[] = [];
   for (const team of [0, 1] as const) for (let k = 0; k < perTeam; k++) skaters.push(makeSkater(team, k));
@@ -49,6 +50,7 @@ export function createWorld(seed = 1, opts: { perTeam?: number; breakout?: [Brea
     switchSince: [99, 99],
     breakout: opts.breakout ?? ['carry', 'carry'],
     neutral: opts.neutral ?? ['man', 'man'],
+    offence: opts.offence ?? ['set', 'set'],
   };
   placeForFaceoff(world);
   return world;
@@ -94,7 +96,9 @@ export function step(world: World, human: Intent[], dt: number): void {
       if (game.phase !== 'play') continue;
       const carrier = world.puck.carrier;
       const threshold = checking ? TUNING.checkMinSpeed : TUNING.checkSpeed;
-      if (closing >= threshold && (carrier === i || carrier === j)) knockLoose(world, carrier === i ? j : i);
+      if (closing >= threshold && (carrier === i || carrier === j) && nextRandom(world) < TUNING.knockChance) {
+        knockLoose(world, carrier === i ? j : i);
+      }
       if (checking && closing >= TUNING.checkMinSpeed) {
         if (a.checking > 0) stunAndShove(b, a);
         if (b.checking > 0) stunAndShove(a, b);

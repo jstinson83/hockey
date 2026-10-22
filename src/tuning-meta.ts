@@ -45,6 +45,7 @@ export const TUNING_GROUPS: Group[] = [
       { key: 'pickupRadius', label: 'Pickup reach', min: 2, max: 8, step: 0.1 },
       { key: 'shooterLockout', label: 'Shooter lockout (s)', min: 0, max: 1, step: 0.05 },
       { key: 'maxPuckSpeed', label: 'Puck speed cap', min: 80, max: 300, step: 5 },
+      { key: 'puckMaxStep', label: 'Puck collision step', min: 0.2, max: 2, step: 0.1 },
     ],
   },
   {
@@ -91,6 +92,7 @@ export const TUNING_GROUPS: Group[] = [
     params: [
       { key: 'checkSpeed', label: 'Plain-contact knock-off speed', min: 5, max: 60, step: 1 },
       { key: 'checkWindow', label: 'Check window (s)', min: 0.1, max: 1, step: 0.05 },
+      { key: 'knockChance', label: 'Chance a hit strips the puck', min: 0, max: 1, step: 0.05 },
       { key: 'checkMinSpeed', label: 'Check min speed', min: 2, max: 40, step: 1 },
       { key: 'checkBounce', label: 'Check bounce', min: 0, max: 1, step: 0.05 },
       { key: 'checkImpulse', label: 'Check shove', min: 0, max: 40, step: 1 },

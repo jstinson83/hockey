@@ -703,10 +703,12 @@ function drawHud(ctx: CanvasRenderingContext2D, world: World): void {
   ctx.fillStyle = TEAM_COLORS[0];
   ctx.fillText(`BREAKOUT ${world.breakout[0].toUpperCase()}`, mid - 32, by - 8);
   ctx.fillText(`NEUTRAL ${world.neutral[0].toUpperCase()}`, mid - 32, by - 20);
+  ctx.fillText(`OFFENCE ${world.offence[0].toUpperCase()}`, mid - 32, by - 32);
   ctx.textAlign = 'left';
   ctx.fillStyle = TEAM_COLORS[1];
   ctx.fillText(`BREAKOUT ${world.breakout[1].toUpperCase()}`, mid + 32, by - 8);
   ctx.fillText(`NEUTRAL ${world.neutral[1].toUpperCase()}`, mid + 32, by - 20);
+  ctx.fillText(`OFFENCE ${world.offence[1].toUpperCase()}`, mid + 32, by - 32);
   ctx.textAlign = 'center';
 
   const cx = VIEW.width / 2;

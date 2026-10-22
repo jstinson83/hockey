@@ -53,11 +53,16 @@ export function updatePuck(world: World, dt: number): void {
     puck.vx *= TUNING.maxPuckSpeed / sp;
     puck.vy *= TUNING.maxPuckSpeed / sp;
   }
-  puck.x += puck.vx * dt;
-  puck.y += puck.vy * dt;
-  bounceOffBoards(puck, r, TUNING.puckBounce);
-  NETS.forEach((net) => collideNet(puck, r, net, TUNING.netBounce, false));
-  goalies.forEach((g) => collideStatic(puck, r, g, goalieRadius(g), TUNING.goalieBounce));
+  // Move in substeps no longer than the net frame is thick, or a hard shot tunnels through the
+  // back of the net (and the goalie) between one step and the next.
+  const n = Math.max(1, Math.ceil((Math.hypot(puck.vx, puck.vy) * dt) / TUNING.puckMaxStep));
+  for (let k = 0; k < n; k++) {
+    puck.x += (puck.vx * dt) / n;
+    puck.y += (puck.vy * dt) / n;
+    bounceOffBoards(puck, r, TUNING.puckBounce);
+    NETS.forEach((net) => collideNet(puck, r, net, TUNING.netBounce, false));
+    goalies.forEach((g) => collideStatic(puck, r, g, goalieRadius(g), TUNING.goalieBounce));
+  }
 
   if (world.game.phase !== 'play') return;
 
