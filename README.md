@@ -10,8 +10,8 @@ TypeScript + Vite + Canvas 2D. Local vs. AI and local 1v1 (two gamepads).
     npm test         # sim unit tests (vitest)
     npm run build    # typecheck + production bundle in dist/
 
-Controls: P1 arrows + Space (shoot) + Z (pass) + X (switch player), or gamepad 1; P2 gamepad 2 only. On a
-PS5 pad: X = shoot, Square = pass, Circle = switch player. With the puck, tap shoot = wrist shot, hold = charge a
+Controls: P1 arrows + Space (shoot) + Z (pass; switch player without the puck), or gamepad 1; P2 gamepad 2 only. On a
+PS5 pad: X = shoot, Square = pass, and without the puck Square switches player. With the puck, tap shoot = wrist shot, hold = charge a
 slapshot (aim assist pulls shots toward the net; spread keeps them from being automatic).
 Without the puck, tapping shoot is a speed burst (stacks to a cap) and opens a short
 bodycheck window. P / Esc / the Options button pauses (it also pauses when the tab loses
@@ -29,7 +29,7 @@ Browsers only report a gamepad after a button press on it.
 - `src/ai.ts` - skater AI (3v3 by default). Team plan (support / defend / chase / press anchors by
   role: C, L, R), carrier decisions (shoot / pass / carry, a few times a second, seeded random), and
   steering that emits the same `Intent` a human would. Each human controls one skater per team
-  (you choose: Circle / X switches to the teammate nearest the puck; it never switches on its own); everyone else is AI. Blue is AI unless a second pad
+  (you choose: the pass button without the puck switches to the teammate nearest it, or the next nearest if you already are; it never switches on its own); everyone else is AI. Blue is AI unless a second pad
   is connected; `D` toggles an AI-vs-AI demo.
 - `src/sim-constants.ts` - rink dimensions and every feel-related `TUNING` value.
 - `src/collide.ts` - circle-vs-boards (rounded rink) and circle-vs-circle. No physics

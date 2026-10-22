@@ -65,7 +65,9 @@ export interface World {
   rng: number; // PRNG state; shot spread and AI decisions draw from it, keeping the sim deterministic per seed
   humans: [boolean, boolean]; // does a person drive each team's controlled skater? (false = AI plays that team)
   controlled: [number, number]; // skater index each team's human controls; changes only when they switch
-  switchHeld: [boolean, boolean]; // previous frame's switch button, for press detection
+  switchHeld: [boolean, boolean]; // previous frame's pass button per team, for press detection
+  switchRank: [number, number];   // rank (by distance to the puck) the last switch chose
+  switchSince: [number, number];  // s since each team's last switch
 }
 
 const ROLES: Role[] = ['C', 'L', 'R'];
@@ -107,6 +109,8 @@ export function createWorld(seed = 1, opts: { perTeam?: number } = {}): World {
     humans: [true, true],
     controlled: [0, perTeam],
     switchHeld: [false, false],
+    switchRank: [0, 0],
+    switchSince: [99, 99],
   };
   placeForFaceoff(world);
   return world;
@@ -164,7 +168,7 @@ export function step(world: World, human: Intent[], dt: number): void {
   const { skaters, goalies, game } = world;
   const controllable = game.phase === 'play' || game.phase === 'goal';
 
-  updateControlled(world, human);
+  updateControlled(world, human, dt);
   const intents: (Intent | undefined)[] = skaters.map((s, i) =>
     world.humans[s.team] && world.controlled[s.team] === i ? human[s.team] : aiIntent(world, i, dt),
   );
@@ -208,34 +212,43 @@ export function step(world: World, human: Intent[], dt: number): void {
 }
 
 /**
- * Control only changes when a human presses switch: it moves to the teammate nearest the
- * puck (never auto-switching, so the skater you're driving doesn't change under you). The
- * held-button state moves with control so a held shoot button doesn't read as a fresh tap
- * on the new skater.
+ * Control only changes when a human presses the pass button without the puck (with the puck
+ * it's a pass); it never switches by itself. A press goes to the teammate closest to the puck
+ * (or the second closest if you already are the closest), and presses in quick succession
+ * keep working down the ranking. The held-button state moves with control so a held shoot
+ * button doesn't read as a fresh tap on the new skater, and the press that switched is
+ * consumed so switching to the carrier doesn't also pass.
  */
-function updateControlled(world: World, human: Intent[]): void {
+function updateControlled(world: World, human: Intent[], dt: number): void {
   const { skaters, puck } = world;
   for (const team of [0, 1] as const) {
-    const pressed = !!human[team]?.switchPlayer;
+    world.switchSince[team] += dt;
+    const pressed = !!human[team]?.pass;
     const edge = pressed && !world.switchHeld[team];
     world.switchHeld[team] = pressed;
-    if (!edge || !world.humans[team]) continue;
-
     const cur = world.controlled[team];
-    let best = cur;
-    let bd = Infinity;
-    skaters.forEach((s, j) => {
-      if (s.team !== team || j === cur) return;
-      const d = Math.hypot(s.x - puck.x, s.y - puck.y);
-      if (d < bd) { bd = d; best = j; }
-    });
-    if (best === cur) continue;
+    if (!edge || !world.humans[team] || puck.carrier === cur) continue; // with the puck it's a pass
+
+    const mates = skaters
+      .map((s, j) => ({ j, team: s.team, d: Math.hypot(s.x - puck.x, s.y - puck.y) }))
+      .filter((m) => m.team === team)
+      .sort((a, b) => a.d - b.d || a.j - b.j)
+      .map((m) => m.j);
+    if (mates.length < 2) continue;
+
+    let rank: number;
+    if (world.switchSince[team] < TUNING.switchChain) rank = (world.switchRank[team] + 1) % mates.length;
+    else rank = mates[0] === cur ? 1 : 0;
+    if (mates[rank] === cur) rank = (rank + 1) % mates.length;
+    world.switchRank[team] = rank;
+    world.switchSince[team] = 0;
 
     const a = skaters[cur];
-    const b = skaters[best];
-    b.actionHeld = a.actionHeld; b.passHeld = a.passHeld; b.pressedWithoutPuck = a.pressedWithoutPuck;
+    const b = skaters[mates[rank]];
+    b.actionHeld = a.actionHeld; b.pressedWithoutPuck = a.pressedWithoutPuck;
+    b.passHeld = true; // this press is spent on the switch
     a.actionHeld = false; a.passHeld = false; a.pressedWithoutPuck = false; a.charge = 0;
-    world.controlled[team] = best;
+    world.controlled[team] = mates[rank];
   }
 }
 

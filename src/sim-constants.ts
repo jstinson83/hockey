@@ -70,6 +70,9 @@ export const TUNING = {
   goalieDownTime: 0.75, // s spent down before recovering
   goalieBounce: 0.35,   // restitution off the goalie (rebounds)
 
+  // Switching players (the pass button without the puck)
+  switchChain: 0.7,     // s: presses closer together than this keep cycling down the list
+
   // AI (skaters the human isn't controlling)
   aiSpeed: 0.92,        // fraction of maxSpeed the AI steers for
   aiArrive: 3.0,        // slows to a stop within maxSpeed*aiSpeed/aiArrive units of its target

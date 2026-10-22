@@ -374,45 +374,89 @@ describe('AI and control', () => {
     expect(w.controlled[0]).toBe(start);
   });
 
-  it('pressing switch takes the teammate nearest the puck, once per press', () => {
+  /** A 3v3 world with red's skaters at known distances from the puck: [0] nearest ... [2] farthest. */
+  function switchWorld(): { w: World; red: number[] } {
     const w = createWorld(1);
     w.humans = [true, false];
     w.game.phase = 'play';
-    const red = w.skaters.filter((s) => s.team === 0);
-    red.forEach((s) => { s.x = CX; s.y = 130; });
-    red[2].x = CX + 30; red[2].y = 60; // the far wing is nearest to the puck
-    w.puck.x = CX + 32; w.puck.y = 55; w.puck.vx = w.puck.vy = 0;
-    w.skaters.filter((s) => s.team === 1).forEach((s) => { s.x = 10; s.y = 20; });
-    const press: Intent = { x: 0, y: 0, action: false, pass: false, switchPlayer: true };
+    w.puck.x = CX; w.puck.y = 100; w.puck.vx = w.puck.vy = 0;
+    const red = w.skaters.map((s, i) => ({ s, i })).filter((o) => o.s.team === 0);
+    red.forEach((o, k) => { o.s.x = CX; o.s.y = 100 + 12 + k * 14; o.s.vx = o.s.vy = 0; }); // 12, 26, 40 away
+    w.skaters.filter((s) => s.team === 1).forEach((s) => { s.x = 8; s.y = 20; });
+    return { w, red: red.map((o) => o.i) };
+  }
+  const press: Intent = { x: 0, y: 0, action: false, pass: true };
+  const release: Intent = { x: 0, y: 0, action: false, pass: false };
 
-    step(w, [idle, idle], DT);
-    expect(w.controlled[0]).toBe(w.skaters.indexOf(red[0])); // unchanged
+  it('the pass button without the puck switches to the closest teammate to the puck', () => {
+    const { w, red } = switchWorld();
+    w.controlled[0] = red[2]; // driving the farthest
     step(w, [press, idle], DT);
-    expect(w.controlled[0]).toBe(w.skaters.indexOf(red[2]));
-    // Holding the button doesn't keep switching; a second press moves to the next nearest.
-    for (let i = 0; i < 10; i++) step(w, [press, idle], DT);
-    expect(w.controlled[0]).toBe(w.skaters.indexOf(red[2]));
+    expect(w.controlled[0]).toBe(red[0]);
+  });
+
+  it('when already controlling the closest, it goes to the second closest', () => {
+    const { w, red } = switchWorld();
+    w.controlled[0] = red[0];
+    step(w, [press, idle], DT);
+    expect(w.controlled[0]).toBe(red[1]);
+  });
+
+  it('quick repeated presses keep working down the ranking, then wrap; a pause starts over', () => {
+    const { w, red } = switchWorld();
+    w.controlled[0] = red[0];
+    const tap = () => { step(w, [press, idle], DT); step(w, [release, idle], DT); };
+    tap(); expect(w.controlled[0]).toBe(red[1]);
+    tap(); expect(w.controlled[0]).toBe(red[2]);
+    tap(); expect(w.controlled[0]).toBe(red[0]);
+    // After a pause the chain resets: controlling the closest -> second closest again.
+    for (let i = 0; i < 60; i++) step(w, [release, idle], DT);
+    tap(); expect(w.controlled[0]).toBe(red[1]);
+  });
+
+  it('holding the button does not keep switching', () => {
+    const { w, red } = switchWorld();
+    w.controlled[0] = red[0];
+    for (let i = 0; i < 30; i++) step(w, [press, idle], DT);
+    expect(w.controlled[0]).toBe(red[1]);
+  });
+
+  it('with the puck, the same button passes and does not switch', () => {
+    const { w, red } = switchWorld();
+    w.controlled[0] = red[0];
+    const s = w.skaters[red[0]];
+    s.x = CX; s.y = 100; w.puck.carrier = red[0];
+    step(w, [press, idle], DT);
+    expect(w.controlled[0]).toBe(red[0]);
+    expect(w.puck.carrier).toBe(-1); // passed
+  });
+
+  it('switching to the puck carrier does not also pass', () => {
+    const { w, red } = switchWorld();
+    w.controlled[0] = red[2];
+    w.skaters[red[0]].x = CX; w.skaters[red[0]].y = 100; w.puck.carrier = red[0]; // a teammate has it
+    step(w, [press, idle], DT);
+    expect(w.controlled[0]).toBe(red[0]);
+    expect(w.puck.carrier).toBe(red[0]); // still carrying: the press was spent on the switch
   });
 
   it('switching does not work on a team with no human', () => {
     const w = createWorld(1);
     w.humans = [false, false];
     const before = w.controlled[0];
-    step(w, [{ x: 0, y: 0, action: false, pass: false, switchPlayer: true }, idle], DT);
+    step(w, [press, idle], DT);
     expect(w.controlled[0]).toBe(before);
   });
 
   it('a held shoot button follows a switch to the new skater instead of firing a burst', () => {
-    const w = createWorld(1);
-    w.humans = [true, false];
-    w.game.phase = 'play';
+    const { w, red } = switchWorld();
+    w.controlled[0] = red[0];
     const hold: Intent = { x: 0, y: 0, action: true, pass: false };
     step(w, [hold, idle], DT);
-    const first = w.controlled[0];
-    expect(w.skaters[first].actionHeld).toBe(true);
-    step(w, [{ ...hold, switchPlayer: true }, idle], DT);
+    expect(w.skaters[red[0]].actionHeld).toBe(true);
+    step(w, [{ ...hold, pass: true }, idle], DT);
     const now = w.controlled[0];
-    expect(now).not.toBe(first);
+    expect(now).not.toBe(red[0]);
     expect(w.skaters[now].boost).toBe(0); // no burst from the handover
   });
 });
