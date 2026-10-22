@@ -83,6 +83,8 @@ export const TUNING = {
   aiPassCooldown: 0.9,  // s between passes
   aiPressure: 9,        // an opponent this close means the carrier is under pressure
   aiBreakoutDepth: 40,  // a carrier this far inside its own half (from centre ice) is breaking out
+  aiDefenceGap: 0.55,   // defence stand this fraction of the way from their net to the puck (14..55 units out)
+  aiCentreGap: 0.75,    // the centre stands this fraction of the way (20..75 units out)
   aiBurstCooldown: 0.55,
   aiCheckChance: 0.7,   // per decision, when within reach of the carrier
 

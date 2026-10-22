@@ -110,6 +110,8 @@ export const TUNING_GROUPS: Group[] = [
       { key: 'aiPassCooldown', label: 'Pass cooldown (s)', min: 0.2, max: 3, step: 0.1 },
       { key: 'aiPressure', label: 'Pressure distance', min: 3, max: 20, step: 1 },
       { key: 'aiBreakoutDepth', label: 'Breakout zone depth', min: 10, max: 90, step: 1, hint: 'units inside own half' },
+      { key: 'aiDefenceGap', label: 'Defence gap', min: 0.2, max: 1, step: 0.05, hint: 'fraction of net-to-puck distance' },
+      { key: 'aiCentreGap', label: 'Centre gap', min: 0.2, max: 1, step: 0.05, hint: 'fraction of net-to-puck distance' },
       { key: 'aiBurstCooldown', label: 'Burst cooldown (s)', min: 0.2, max: 2, step: 0.05 },
       { key: 'aiCheckChance', label: 'Check chance', min: 0, max: 1, step: 0.05 },
     ],

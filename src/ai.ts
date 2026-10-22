@@ -158,14 +158,22 @@ function supportAnchor(world: World, s: Skater, carrier: Point): Point {
   return keepIn(CX + side * 22, carrier.y + fwd * 6);
 }
 
-/** Where the defending roles stand when they have the puck: C goal-side of it, wings on opponents. */
+/**
+ * Where the defending roles stand when they don't have the puck. Defence and the centre hold a
+ * line on the goal-to-puck axis that moves up with the puck (defence in front, centre higher and
+ * central), so the team collapses on the net only when the puck is already close to it. Wings
+ * mark opponents.
+ */
 function defendAnchor(world: World, s: Skater, puck: Point, carrierIdx: number): Point {
   const own = defendedNet(s.team);
   const goal = { x: CX, y: own.gy };
-  if (isDefence(s.role)) return keepIn(CX + sideOf(s.role) * 9, own.gy - own.dir * 14); // guard the slot, either side of the net
-  if (s.role === 'C') {
+  if (isDefence(s.role) || s.role === 'C') {
     const d = dist(puck, goal) || 1;
-    return keepIn(goal.x + ((puck.x - goal.x) / d) * 16, goal.y + ((puck.y - goal.y) / d) * 16);
+    const depth = isDefence(s.role)
+      ? clamp(d * TUNING.aiDefenceGap, 14, 55)
+      : clamp(d * TUNING.aiCentreGap, 20, 75);
+    const x = goal.x + ((puck.x - goal.x) / d) * depth + sideOf(s.role) * 10;
+    return keepIn(x, goal.y + ((puck.y - goal.y) / d) * depth);
   }
   const marks = world.skaters.filter((o, j) => o.team !== s.team && j !== carrierIdx).sort((a, b) => a.x - b.x);
   const mark = s.role === 'L' ? marks[0] : marks[marks.length - 1];

@@ -342,6 +342,43 @@ describe('5v5', () => {
   });
 });
 
+describe('defending', () => {
+  it('does not park the whole team on its own net while the puck is far away', () => {
+    const w = createWorld(4);
+    w.humans = [false, false];
+    w.game.phase = 'play';
+    const blue = w.skaters.map((s, i) => ({ s, i })).filter((o) => o.s.team === 1);
+    // Blue spread around centre ice, carrier on the puck at centre; red must defend.
+    blue.forEach((o, k) => Object.assign(o.s, { x: 15 + k * 14, y: RINK.h / 2 - 15 - (k % 2) * 10, vx: 0, vy: 0 }));
+    const carrier = blue[0];
+    Object.assign(carrier.s, { x: CX, y: RINK.h / 2, vx: 0, vy: 0 });
+    for (let i = 0; i < 300; i++) {
+      step(w, [idle, idle], DT);
+      w.puck.carrier = carrier.i;
+      blue.forEach((o) => { o.s.vx = o.s.vy = 0; });
+    }
+    const goal = { x: CX, y: RINK.h - GOAL.line };
+    const near = w.skaters.filter((s) => s.team === 0 && Math.hypot(s.x - goal.x, s.y - goal.y) < 30).length;
+    expect(near).toBeLessThanOrEqual(1);
+  });
+
+  it('collapses toward the net as the puck comes in', () => {
+    const w = createWorld(4);
+    w.humans = [false, false];
+    w.game.phase = 'play';
+    const blue = w.skaters.findIndex((s) => s.team === 1);
+    const redDefence = w.skaters.filter((s) => s.team === 0 && (s.role === 'LD' || s.role === 'RD'));
+    const meanY = (puckY: number): number => {
+      Object.assign(w.skaters[blue], { x: CX, y: puckY, vx: 0, vy: 0 });
+      for (let i = 0; i < 240; i++) { step(w, [idle, idle], DT); Object.assign(w.skaters[blue], { x: CX, y: puckY, vx: 0, vy: 0 }); w.puck.carrier = blue; }
+      return redDefence.reduce((a, s) => a + s.y, 0) / redDefence.length;
+    };
+    const far = meanY(RINK.h / 2);
+    const close = meanY(RINK.h - 50);
+    expect(close).toBeGreaterThan(far); // larger y = nearer red's own (bottom) net
+  });
+});
+
 describe('breakouts', () => {
   /** Red (attacking up the ice from y=200) with `carrier` on the puck deep in its own end, left of centre; blue far away. */
   const breakWorld = (plan: 'carry' | 'boards' | 'swing' | 'stretch', carrier: number): World => {
