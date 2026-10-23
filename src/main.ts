@@ -2,6 +2,7 @@ import { isTextEntry, P1_KEYS, readIntent } from './input';
 import { createCamera, updateCamera } from './camera';
 import { drawPause, render, setupCanvas } from './render';
 import { BREAKOUTS, createWorld, NEUTRALS, OFFENCES, step, TUNING } from './sim';
+import { initStrategyMenu } from './strategy-menu';
 import { initTuningPanel } from './tuning-panel';
 
 const DT = 1 / 60; // fixed simulation timestep
@@ -16,7 +17,9 @@ const newWorld = () => createWorld((Math.random() * 2 ** 31) | 0, { breakout: [p
 let world = newWorld();
 let camera = createCamera(world);
 const tuning = initTuningPanel(document.getElementById('tuning')!);
+const strategies = initStrategyMenu(document.getElementById('strategies')!, () => world);
 let paused = false;
+let menuShown = false;
 let demo = false; // AI plays both teams; handy for watching without a controller
 
 addEventListener('keydown', (e) => {
@@ -83,6 +86,8 @@ function frame(now: number): void {
 
   render(ctx, world, camera);
   if (paused) drawPause(ctx);
+  if (paused !== menuShown) { menuShown = paused; strategies.show(paused); }
+  else if (paused) strategies.sync(); // a key may have cycled a plan
   requestAnimationFrame(frame);
 }
 

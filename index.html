@@ -31,11 +31,20 @@
       #tuning .undo { padding: 0 4px; line-height: 18px; }
       #tuning textarea { margin: 6px 10px; background: #1a1e26; color: #dfe3ea; border: 1px solid #3a414d; border-radius: 6px; font: 11px ui-monospace, monospace; resize: vertical; }
       #tuning footer { padding: 6px 10px; border-top: 1px solid #2c313b; color: #7d8696; font-size: 11px; }
+
+      #strategies { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 9; padding: 10px 14px; border-radius: 10px;
+        background: rgba(14,16,22,0.94); border: 1px solid #2c313b; color: #dfe3ea; font-size: 13px; text-align: center; }
+      #strategies[hidden] { display: none; }
+      #strategies .grid { display: grid; grid-template-columns: auto 120px 120px; gap: 6px 10px; align-items: center; text-align: left; }
+      #strategies .team { font-weight: 800; text-align: center; }
+      #strategies select { width: 100%; background: #1a1e26; color: inherit; border: 1px solid #3a414d; border-radius: 4px; padding: 3px 4px; font: inherit; }
+      #strategies small { display: block; margin-top: 8px; color: #7d8696; font-size: 11px; }
     </style>
   </head>
   <body>
     <canvas id="game"></canvas>
     <aside id="tuning" hidden></aside>
+    <aside id="strategies" hidden></aside>
     <div id="hint">P1: arrows + Space (shoot / burst &amp; check) + Z (pass / switch player) or pad 1: X shoot, Square pass / switch player · P2: pad 2 (else AI) · P / Esc / Options = pause · D = AI demo · R = reset · F = fullscreen · T = tuning</div>
     <script type="module" src="/src/main.ts"></script>
   </body>

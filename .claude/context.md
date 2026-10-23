@@ -40,5 +40,6 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
   The loose puck moves in substeps (`puckMaxStep`) so hard shots can't tunnel through the net or goalie.
   Contact strips the puck only with probability `knockChance` once past the speed threshold.
   Skaters are 5% smaller than the original (`skaterRadius` 2.375).
+- Pause menu has per-team strategy dropdowns (`strategy-menu.ts`); plans are still random per new game.
 - Live tuning panel (`T`) with copy-out of changed values.
 - Pause screen, fullscreen, AI-vs-AI demo (`D`).
