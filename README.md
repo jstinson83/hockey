@@ -36,6 +36,8 @@ Browsers only report a gamepad after a button press on it.
 - `src/tuning-panel.ts` / `tuning-meta.ts` / `tuning-store.ts` - the live tuning overlay (`T`): a slider per
   `TUNING` value, saved in the browser, with "Copy changes" to export what differs from the code's defaults.
   Add a new `TUNING` value to `tuning-meta.ts` too (a test fails if one is missing).
+- `src/strategy-menu.ts` - the pause-screen dropdowns for each team's breakout / neutral-zone / offensive-zone plan
+  (same fields the B/N, V/M, O/L keys cycle).
 - `src/sim-constants.ts` - rink dimensions and every feel-related `TUNING` value.
 - `src/collide.ts` - circle-vs-boards (rounded rink) and circle-vs-circle. No physics
   engine on purpose: arcade feel and determinism matter more than realism.

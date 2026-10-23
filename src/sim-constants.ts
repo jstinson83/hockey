@@ -93,6 +93,7 @@ export const TUNING = {
   aiPointDepth: 36,     // offensive-zone points stand this far past centre ice (the blue line is 28)
   aiCentreGap: 0.75,    // the centre stands this fraction of the way (20..75 units out)
   aiTrapLine: 8,        // the trap's wall stands this far on our side of centre ice
+  aiTrapGap: 28,        // the trap's wall steps up to stay this far in front of a carrier who is deep in their own end
   aiPressGap: 24,       // under the press, defence stand this far behind the puck carrier
   aiBurstCooldown: 0.55,
   aiCheckChance: 0.5,   // per decision, when within reach of the carrier

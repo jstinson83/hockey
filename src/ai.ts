@@ -259,7 +259,11 @@ function neutralAnchor(world: World, s: Skater, carrier: Point, carrierIdx: numb
     return { target: keepIn(CX, carrier.y - fwd * 14), press: false };
   }
   // trap
-  const wallY = MID - fwd * TUNING.aiTrapLine;
+  // The wall holds its line while the carrier is in the neutral zone, then steps up with them as they
+  // stay in their own end (a forecheck), so they never sit at centre ice while the play is deep behind it.
+  const carrierProgress = progress(s.team, carrier.y);
+  const wallProgress = clamp(carrierProgress - TUNING.aiTrapGap, -TUNING.aiTrapLine, TUNING.aiPointDepth);
+  const wallY = MID + fwd * wallProgress;
   if (s.role === 'C') {
     // Angle the carrier: stand between it and the middle of the ice, a little on our side of it.
     const t = keepIn(carrier.x + (CX - carrier.x) * 0.4, carrier.y - fwd * 8);
@@ -269,7 +273,7 @@ function neutralAnchor(world: World, s: Skater, carrier: Point, carrierIdx: numb
     return { target: routeAroundNet(s, onCarrier), press: true }; // the wall engages whoever reaches it
   }
   const slotX = s.role === 'L' ? 12 : s.role === 'LD' ? 31 : s.role === 'RD' ? 54 : 73;
-  const shade = clamp((carrier.x - CX) * 0.25, -8, 8);
+  const shade = clamp((carrier.x - CX) * 0.5, -14, 14); // the wall slides across with the puck
   return { target: keepIn(slotX + shade, wallY), press: false };
 }
 

@@ -414,7 +414,7 @@ describe('neutral zone', () => {
   it('trap: four skaters wall up just on their side of centre ice, spread across it; the centre closes on the carrier', () => {
     const w = setUp('trap', CX + 25, RINK.h / 2 - 5, 5);
     const wall = red(w).filter((s) => s.role !== 'C');
-    wall.forEach((s) => expect(Math.abs(s.y - (RINK.h / 2 + TUNING.aiTrapLine))).toBeLessThan(8));
+    wall.forEach((s) => expect(Math.abs(s.y - (RINK.h / 2 + TUNING.aiTrapLine))).toBeLessThan(10));
     const xs = wall.map((s) => s.x);
     expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(40);
     const c = red(w).find((s) => s.role === 'C')!;
@@ -810,5 +810,21 @@ describe('defence discipline', () => {
     const free = run(1000);
     expect(limited.r).toBeGreaterThan(free.r + 3); // the winger takes the chase
     expect(limited.rd).toBeLessThan(free.rd - 1); // the defender no longer charges (it still drifts up with its hold line)
+  });
+});
+
+describe('trap forecheck', () => {
+  it('the wall steps up into the carrier\'s end instead of waiting at centre ice while they are deep in it', () => {
+    const w = createWorld(7, { neutral: ['man', 'trap'], breakout: ['boards', 'carry'] });
+    w.humans = [false, false];
+    w.game.phase = 'play';
+    const c = w.skaters.findIndex((s) => s.team === 0 && s.role === 'LD');
+    // Red's defenceman sits deep in red's own end (the bottom); blue is trapping.
+    const hold = () => { Object.assign(w.skaters[c], { x: CX, y: 175, vx: 0, vy: 0 }); w.puck.carrier = c; };
+    hold();
+    for (let i = 0; i < 360; i++) { step(w, [idle, idle], DT); hold(); }
+    const wall = w.skaters.filter((s) => s.team === 1 && s.role !== 'C');
+    const centreIce = RINK.h / 2;
+    wall.forEach((s) => expect(s.y).toBeGreaterThan(centreIce + 15)); // well into red's half, not parked at the red line
   });
 });
