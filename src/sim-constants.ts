@@ -46,6 +46,7 @@ export const TUNING = {
   chargeTime: 0.6,    // s of holding for a full slapshot
   aimAssistCone: 1.4, // rad (~80deg): shots within this of the net get pulled toward it
   aimAssist: 1.0,     // how far toward the (post-clamped) net a shot is pulled, 0..1
+  aimCloseRange: 40,  // inside this distance (in front of the net) shots go at the net whichever way you face
   aimNear: 30,        // shot distance (to the net) up to which accuracy is full
   aimFar: 110,        // distance at which aim assist and spread reach their worst
   aimFarAssist: 0.35, // aim assist pull left at aimFar (fraction of aimAssist)

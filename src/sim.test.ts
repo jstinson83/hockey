@@ -305,6 +305,15 @@ describe('shots', () => {
     expect(Math.abs(x - (CX + 4))).toBeLessThan(40 * TUNING.wristSpread + 0.5);
   });
 
+  it('shots from right in front of the net go on net whichever way the skater faces (dekes)', () => {
+    for (const facing of [0, Math.PI, -0.2, Math.PI + 0.2, -0.45, Math.PI + 0.45, -Math.PI / 2 - 1.2]) {
+      for (let seed = 1; seed <= 20; seed++) {
+        const x = crossX(release(seed, CX + 3, 30, facing));
+        expect(Math.abs(x - CX)).toBeLessThan(GOAL.width / 2);
+      }
+    }
+  });
+
   it('is more accurate near the net than far from it', () => {
     const onNet = (y: number): number => {
       let n = 0;
