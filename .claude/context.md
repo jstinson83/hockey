@@ -33,8 +33,12 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
 - AI strategies, first slice: per-team breakout plans (`World.breakout`: carry / boards / swing /
   stretch) that change support anchors and the carrier's designated outlet pass while it is deep in
   its own end. Plans are switches inside `ai.ts`; each new game rolls one per team at random (`main.ts`), B / N override. The AI does not choose plans itself yet.
+  Offensive-zone plans too (`World.offence`: set / shoot / cycle / overload; O / L override): they move the
+  support anchors once the carrier is past the blue line and bias the carrier's shot range and chance.
 - Neutral-zone defence plans per team (`World.neutral`: man / trap / press), active while the puck is out
   of the defending team's end; inside it the team collapses toward the slot, never into the crease.
+  The loose puck moves in substeps (`puckMaxStep`) so hard shots can't tunnel through the net or goalie.
+  Contact strips the puck only with probability `knockChance` once past the speed threshold.
   Skaters are 5% smaller than the original (`skaterRadius` 2.375).
 - Live tuning panel (`T`) with copy-out of changed values.
 - Pause screen, fullscreen, AI-vs-AI demo (`D`).

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import type { Intent } from './input';
 import { addSkater, createWorld, step, type World } from './sim';
 import { GAME, GOAL, RINK, TUNING } from './sim-constants';
@@ -189,9 +189,13 @@ describe('buttons', () => {
   it('a tap-initiated check knocks the puck off a carrier at a speed plain contact would not', () => {
     const run1 = (checkerTaps: boolean): number => {
       const w = liveWorld();
+      w.rng = 1;
+      const was = TUNING.knockChance;
+      TUNING.knockChance = 1;
+      onTestFinished(() => { TUNING.knockChance = was; });
       const [red, blue] = w.skaters;
       blue.x = CX; blue.y = 100; blue.vx = blue.vy = 0; w.puck.carrier = 1;
-      red.x = CX; red.y = 100 + 9; red.vx = 0; red.vy = -14; // closing ~14: above checkMinSpeed, below checkSpeed
+      red.x = CX; red.y = 100 + 9; red.vx = 0; red.vy = -16; // closing ~16: above checkMinSpeed, below checkSpeed
       step(w, [tap(checkerTaps, false, 0, -1), idle], DT);
       for (let i = 0; i < 30; i++) step(w, [idle, idle], DT);
       return w.puck.carrier;
@@ -683,5 +687,77 @@ describe('AI and control', () => {
     const now = w.controlled[0];
     expect(now).not.toBe(red[0]);
     expect(w.skaters[now].boost).toBe(0); // no burst from the handover
+  });
+});
+
+describe('puck vs. net', () => {
+  it('a hard shot into the net stays in or in front of it, never out the back (no tunnelling)', () => {
+    for (const speed of [100, 130, 160]) {
+      for (let k = 0; k < 12; k++) {
+        const w = createWorld(3, { perTeam: 1 });
+        w.humans = [false, false];
+        w.game.phase = 'play';
+        w.skaters.forEach((s) => { s.x = 10; s.y = RINK.h / 2; });
+        Object.assign(w.puck, { x: CX, y: 60 + k * 0.2, vx: 0, vy: -speed, carrier: -1 });
+        for (let i = 0; i < 90; i++) { w.goalies[1].x = 5; step(w, [idle, idle], DT); }
+        expect(w.game.score[0], `speed ${speed} k ${k}`).toBe(1);
+        expect(w.puck.y, `speed ${speed} k ${k}`).toBeGreaterThan(NETS[0].backY);
+      }
+    }
+  });
+});
+
+describe('contact', () => {
+  it('only some hard-enough bumps strip the puck', () => {
+    let stripped = 0;
+    const trials = 60;
+    for (let t = 0; t < trials; t++) {
+      const w = liveWorld();
+      w.rng = t + 1;
+      const [red, blue] = w.skaters;
+      blue.x = CX; blue.y = 100; blue.vx = blue.vy = 0; w.puck.carrier = 1;
+      red.x = CX; red.y = 100 + 2 * TUNING.skaterRadius - 0.2; red.vx = 0; red.vy = -(TUNING.checkSpeed + 6);
+      step(w, [idle, idle], DT);
+      if (w.puck.carrier !== 1) stripped++;
+    }
+    expect(stripped).toBeGreaterThan(trials * 0.25);
+    expect(stripped).toBeLessThan(trials * 0.85);
+  });
+});
+
+describe('offensive zone', () => {
+  /** Red attacks the top net; its right wing carries the puck on the left side of the zone, blue stays out of the way. */
+  const setUp = (plan: 'set' | 'shoot' | 'cycle' | 'overload'): World => {
+    const w = createWorld(8, { offence: [plan, 'set'] });
+    w.humans = [false, false];
+    w.game.phase = 'play';
+    w.skaters.forEach((s) => { if (s.team === 1) { s.x = CX + 40; s.y = 150; } });
+    const reds = w.skaters.map((s, i) => ({ s, i })).filter((o) => o.s.team === 0);
+    reds.forEach((o, k) => Object.assign(o.s, { x: 20 + k * 12, y: 60 + k * 4, vx: 0, vy: 0 }));
+    const hold = () => { Object.assign(reds[2].s, { x: 30, y: 45, vx: 0, vy: 0 }); w.puck.carrier = reds[2].i; w.goalies.forEach((g) => { g.x = CX; }); };
+    hold();
+    for (let i = 0; i < 6 * 60; i++) { step(w, [idle, idle], DT); hold(); if (w.puck.carrier !== reds[2].i) break; }
+    return w;
+  };
+  const role = (w: World, r: string) => w.skaters.find((s) => s.team === 0 && s.role === r)!;
+
+  it('shoot: defence on the points, centre screens the goalie, wings at the posts', () => {
+    const w = setUp('shoot');
+    const net = NETS[0];
+    expect(Math.abs(role(w, 'C').x - CX)).toBeLessThan(16);
+    expect(Math.abs(role(w, 'C').y - net.gy)).toBeLessThan(20);
+    expect(role(w, 'RD').y).toBeGreaterThan(role(w, 'C').y + 20); // the point is up the ice from the slot
+  });
+
+  it('cycle: the strong-side wing is low in the corner on the carrier\'s side', () => {
+    const w = setUp('cycle');
+    expect(role(w, 'L').x).toBeLessThan(CX - 20);
+    expect(role(w, 'L').y).toBeLessThan(NETS[0].gy + 15);
+  });
+
+  it('overload: three skaters crowd the carrier\'s side of the net', () => {
+    const w = setUp('overload');
+    const strong = w.skaters.filter((s) => s.team === 0 && s.x < CX).length;
+    expect(strong).toBeGreaterThanOrEqual(3);
   });
 });

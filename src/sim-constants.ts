@@ -59,6 +59,7 @@ export const TUNING = {
   postRadius: 0.6,      // net frame thickness (puck and skaters collide with it)
   netBounce: 0.3,       // puck restitution off the net frame
   maxPuckSpeed: 160,
+  puckMaxStep: 0.6,     // longest distance the loose puck moves between collision checks (keeps it from tunnelling)
   goalieRadius: 2.4,
   goalieDownRadius: 3.2, // butterfly: wider, can't move sideways
   goalieSpeed: 28,
@@ -88,14 +89,15 @@ export const TUNING = {
   aiTrapLine: 8,        // the trap's wall stands this far on our side of centre ice
   aiPressGap: 24,       // under the press, defence stand this far behind the puck carrier
   aiBurstCooldown: 0.55,
-  aiCheckChance: 0.7,   // per decision, when within reach of the carrier
+  aiCheckChance: 0.5,   // per decision, when within reach of the carrier
 
   // Checking. A tap of the shoot button without the puck opens a check window: a hit
   // inside it knocks the puck loose at a much lower closing speed, shoves the victim and
   // briefly stuns them. Plain contact still knocks the puck loose at checkSpeed.
-  checkSpeed: 22,     // closing speed that knocks the puck off a carrier in plain contact
+  checkSpeed: 32,     // closing speed that knocks the puck off a carrier in plain contact
   checkWindow: 0.35,  // s after a tap during which contact counts as a check
-  checkMinSpeed: 10,  // closing speed a check needs to land
+  checkMinSpeed: 13,  // closing speed a check needs to land
+  knockChance: 0.55,  // chance that a contact hard enough to count actually strips the carrier
   checkBounce: 0.8,
   checkImpulse: 14,   // extra shove on the victim
   checkStun: 0.6,     // s of reduced control
