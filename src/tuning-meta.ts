@@ -113,6 +113,8 @@ export const TUNING_GROUPS: Group[] = [
       { key: 'aiPressure', label: 'Pressure distance', min: 3, max: 20, step: 1 },
       { key: 'aiBreakoutDepth', label: 'Breakout zone depth', min: 10, max: 90, step: 1, hint: 'units inside own half' },
       { key: 'aiDefenceGap', label: 'Defence gap', min: 0.2, max: 1, step: 0.05, hint: 'fraction of net-to-puck distance' },
+      { key: 'aiDefenceChase', label: 'Defence chase range', min: 0, max: 80, step: 1, hint: 'beyond this they hold position' },
+      { key: 'aiPointDepth', label: 'Point depth (O-zone)', min: 28, max: 70, step: 1, hint: 'units past centre; blue line is 28' },
       { key: 'aiCentreGap', label: 'Centre gap', min: 0.2, max: 1, step: 0.05, hint: 'fraction of net-to-puck distance' },
       { key: 'aiTrapLine', label: 'Trap line depth', min: 0, max: 24, step: 1, hint: 'units on our side of centre' },
       { key: 'aiPressGap', label: 'Press: defence gap', min: 8, max: 45, step: 1, hint: 'units behind the carrier' },
