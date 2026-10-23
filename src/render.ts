@@ -600,6 +600,16 @@ function drawSkater(ctx: CanvasRenderingContext2D, cam: Camera, s: World['skater
   ctx.lineTo(sx + Math.cos(s.facing) * r * 1.8 * S, sy + Math.sin(s.facing) * r * 1.8 * S * T);
   ctx.stroke();
 
+  if (s.poking > 0) {
+    const reach = TUNING.pokeReach * (1 - s.poking / 0.18 * 0.4);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + Math.cos(s.facing) * reach * S, sy + Math.sin(s.facing) * reach * S * T);
+    ctx.stroke();
+  }
+
   if (s.charge > 0) {
     const t = Math.min(s.charge / TUNING.chargeTime, 1);
     ctx.strokeStyle = t >= 1 ? '#e80' : '#777';

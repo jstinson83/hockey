@@ -96,6 +96,11 @@ export const TUNING_GROUPS: Group[] = [
     params: [
       { key: 'checkSpeed', label: 'Plain-contact knock-off speed', min: 5, max: 60, step: 1 },
       { key: 'checkWindow', label: 'Check window (s)', min: 0.1, max: 1, step: 0.05 },
+      { key: 'pokeReach', label: 'Poke reach', min: 3, max: 15, step: 0.5 },
+      { key: 'pokeCone', label: 'Poke cone (rad)', min: 0.1, max: 1.5, step: 0.05 },
+      { key: 'pokeChance', label: 'Poke strips puck chance', min: 0, max: 1, step: 0.05 },
+      { key: 'pokeCooldown', label: 'Poke cooldown (s)', min: 0.1, max: 2, step: 0.05 },
+      { key: 'pokeLunge', label: 'Poke lunge', min: 0, max: 20, step: 0.5 },
       { key: 'knockChance', label: 'Chance a hit strips the puck', min: 0, max: 1, step: 0.05 },
       { key: 'checkMinSpeed', label: 'Check min speed', min: 2, max: 40, step: 1 },
       { key: 'checkBounce', label: 'Check bounce', min: 0, max: 1, step: 0.05 },

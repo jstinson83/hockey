@@ -64,13 +64,13 @@ export const TUNING = {
   netBounce: 0.3,       // puck restitution off the net frame
   maxPuckSpeed: 160,
   puckMaxStep: 0.6,     // longest distance the loose puck moves between collision checks (keeps it from tunnelling)
-  goalieRadius: 2.1,
-  goalieDownRadius: 2.8, // butterfly: wider, can't move sideways
-  goalieSpeed: 22,
-  goalieReaction: 0.2,   // s: lag in tracking the puck, and delay before committing to a dive
+  goalieRadius: 2.4,
+  goalieDownRadius: 3.2, // butterfly: wider, can't move sideways
+  goalieSpeed: 28,
+  goalieReaction: 0.13,  // s: lag in tracking the puck, and delay before committing to a dive
   goalieDiveTrigger: 45, // puck speed that counts as a shot
-  goalieDiveRange: 24,  // only dives to shots this close to the goal line
-  goalieDiveSpeed: 26,
+  goalieDiveRange: 30,  // only dives to shots this close to the goal line
+  goalieDiveSpeed: 32,
   goalieDiveTime: 0.3,  // s of sideways slide
   goalieDownTime: 0.75, // s spent down before recovering
   goalieBounce: 0.35,   // restitution off the goalie (rebounds)
@@ -106,6 +106,11 @@ export const TUNING = {
   checkWindow: 0.35,  // s after a tap during which contact counts as a check
   checkMinSpeed: 13,  // closing speed a check needs to land
   knockChance: 0.55,  // chance that a contact hard enough to count actually strips the carrier
+  pokeReach: 7.5,     // centre-to-centre distance a poke check reaches (a skater is ~4.3 wide)
+  pokeCone: 0.7,      // rad either side of facing the carrier must be within
+  pokeChance: 0.6,    // chance a poke that reaches the carrier knocks the puck loose
+  pokeCooldown: 0.7,  // s before the next poke, hit or miss
+  pokeLunge: 6,       // forward speed added by the stab
   checkBounce: 0.8,
   checkImpulse: 14,   // extra shove on the victim
   checkStun: 0.6,     // s of reduced control

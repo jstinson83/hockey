@@ -15,6 +15,9 @@ export interface Skater {
   lockout: number;     // s before this skater can pick up the puck
   boost: number;       // extra top speed from burst taps; decays
   checking: number;    // s left in the check window opened by a tap
+  poking: number;      // s left of the poke animation (presentation only)
+  pokeCd: number;      // s before another poke is allowed
+  pokeHeld: boolean;   // previous frame's poke-button state, for press detection
   stun: number;        // s left of reduced control after being checked
   color: string;
 }

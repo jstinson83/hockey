@@ -3,6 +3,7 @@ import type { Intent } from './input';
 import { nextRandom } from './rng';
 import { clamp01, wrapAngle } from './mathutil';
 import { GOAL, RINK, TUNING } from './sim-constants';
+import { knockLoose } from './puck';
 import type { Skater, World } from './sim-types';
 
 /**
@@ -19,6 +20,9 @@ export function handleButtons(world: World, i: number, intent: Intent | undefine
   const released = !held && s.actionHeld;
   const passPressed = passHeld && !s.passHeld;
   s.actionHeld = held;
+  const pokePressed = !!intent?.poke && !s.pokeHeld;
+  s.pokeHeld = !!intent?.poke;
+  if (pokePressed && !hasPuck && world.game.phase === 'play') pokeCheck(world, i);
   s.passHeld = passHeld;
 
   if (pressed && !hasPuck) {
@@ -38,6 +42,28 @@ export function handleButtons(world: World, i: number, intent: Intent | undefine
     if (released && shotPress) shoot(world, i);
   }
   if (world.puck.carrier !== i) s.charge = 0;
+}
+
+/**
+ * Poke check: a stab of the stick along the skater's facing. If the carrier is an opponent inside
+ * the reach and cone, it strips the puck with probability pokeChance. Hit or miss, the stab
+ * leaves the skater on cooldown (and lunging a little), so spamming it is a bad idea.
+ */
+function pokeCheck(world: World, i: number): void {
+  const s = world.skaters[i];
+  if (s.pokeCd > 0 || s.stun > 0) return;
+  s.pokeCd = TUNING.pokeCooldown;
+  s.poking = 0.18;
+  s.vx += Math.cos(s.facing) * TUNING.pokeLunge;
+  s.vy += Math.sin(s.facing) * TUNING.pokeLunge;
+  const c = world.puck.carrier;
+  const v = c >= 0 ? world.skaters[c] : null;
+  if (!v || v.team === s.team) return;
+  const dx = v.x - s.x;
+  const dy = v.y - s.y;
+  if (Math.hypot(dx, dy) > TUNING.pokeReach) return;
+  if (Math.abs(wrapAngle(Math.atan2(dy, dx) - s.facing)) > TUNING.pokeCone) return;
+  if (nextRandom(world) < TUNING.pokeChance) knockLoose(world, i);
 }
 
 /** Kick forward and raise top speed (up to a cap); the check window opens too. */

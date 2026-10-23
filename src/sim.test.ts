@@ -204,6 +204,26 @@ describe('buttons', () => {
     expect(run1(true)).not.toBe(1); // checked: puck comes off blue (the checker may then pick it up)
   });
 
+  it('a poke check strips a carrier in front, not one behind or out of reach, and has a cooldown', () => {
+    const poke = (dy: number, pokeChance = 1): { carrier: number; w: World } => {
+      const w = liveWorld();
+      const was = TUNING.pokeChance;
+      TUNING.pokeChance = pokeChance;
+      onTestFinished(() => { TUNING.pokeChance = was; });
+      const [red, blue] = w.skaters;
+      blue.x = CX; blue.y = 100; blue.vx = blue.vy = 0; w.puck.carrier = 1;
+      red.x = CX; red.y = 100 + dy; red.vx = red.vy = 0;
+      step(w, [{ x: 0, y: -1, action: false, pass: false, poke: true }, idle], DT);
+      return { carrier: w.puck.carrier, w };
+    };
+    expect(poke(6).carrier).toBe(-1);             // in reach, in front: stripped
+    expect(poke(TUNING.pokeReach + 3).carrier).toBe(1); // out of reach
+    expect(poke(-6).carrier).toBe(1);             // carrier is behind the poker
+    expect(poke(6, 0).carrier).toBe(1);           // a miss leaves them with it
+    const { w } = poke(6, 0);
+    expect(w.skaters[0].pokeCd).toBeGreaterThan(0);
+  });
+
   it('a check stuns the victim and shoves them', () => {
     const w = liveWorld();
     const [red, blue] = w.skaters;
