@@ -102,15 +102,17 @@ function nearestOpponent(world: World, team: Skater['team'], p: Point): number {
 }
 
 /** Closest skater of `team` to a point; skaters still locked out of the puck are skipped unless `eligibleOnly` is off. */
-function closestTo(world: World, team: Skater['team'], p: Point, eligibleOnly = true): number {
+function closestTo(world: World, team: Skater['team'], p: Point, eligibleOnly = true, holdD = false): number {
   let best = -1;
   let bd = Infinity;
   world.skaters.forEach((m, j) => {
     if (m.team !== team || (eligibleOnly && m.lockout > 0)) return;
     const d = dist(m, p);
+    if (holdD && isDefence(m.role) && d > TUNING.aiDefenceChase) return; // defence hold their spots rather than chase far
     if (d < bd) { bd = d; best = j; }
   });
-  return best >= 0 || !eligibleOnly ? best : closestTo(world, team, p, false);
+  if (best >= 0) return best;
+  return eligibleOnly ? closestTo(world, team, p, false, holdD) : holdD ? closestTo(world, team, p, false) : best;
 }
 
 /** Keep an anchor on the ice and out of (and away from the mouth of) the nets. */
@@ -170,14 +172,14 @@ function offenceAnchor(plan: Offence, s: Skater, carrier: Point): Point {
   const cSide = carrier.x < CX ? -1 : 1;
   const wide = (sd: number, inset: number): number => (sd < 0 ? inset : RINK.w - inset);
   const behind = net.gy + fwd * (GOAL.depth + 4); // just past the goal line, in the corner
-  const point = keepIn(CX + side * 20, MID + fwd * 52);
+  const point = keepIn(CX + side * 20, MID + fwd * TUNING.aiPointDepth);
   switch (plan) {
     case 'shoot':
       if (isDefence(s.role)) return point;
       if (s.role === 'C') return keepIn(CX, net.gy - fwd * 9); // screen the goalie
       return keepIn(CX + side * (GOAL.width / 2 + 3), net.gy - fwd * 8); // crash the posts
     case 'cycle': {
-      if (isDefence(s.role)) return keepIn(CX + side * 26, MID + fwd * 46);
+      if (isDefence(s.role)) return keepIn(CX + side * 26, MID + fwd * (TUNING.aiPointDepth - 6));
       const strongWing = s.role === (cSide < 0 ? 'L' : 'R');
       // Strong-side wing stays low in the corner, the centre supports high on the wall, the far wing is the slot option.
       if (s.role === 'C') return keepIn(wide(cSide, 14), carrier.y - fwd * 12);
@@ -186,7 +188,7 @@ function offenceAnchor(plan: Offence, s: Skater, carrier: Point): Point {
     case 'overload': {
       if (isDefence(s.role)) {
         const strongD = side === cSide;
-        return strongD ? keepIn(CX + side * 14, MID + fwd * 52) : keepIn(CX, net.gy - fwd * 26); // far D slides to the seam
+        return strongD ? keepIn(CX + side * 14, MID + fwd * TUNING.aiPointDepth) : keepIn(CX, net.gy - fwd * 26); // far D slides to the seam
       }
       if (s.role === 'C') return keepIn(wide(cSide, 22), net.gy - fwd * 10);
       const strongWing = side === cSide;
@@ -478,7 +480,7 @@ function offPuckIntent(world: World, i: number): Intent {
   let chase = false;
   let press = false;
   if (!carrier) {
-    if (closestTo(world, s.team, pred) === i) {
+    if (closestTo(world, s.team, pred, true, true) === i) {
       target = routeAroundNet(s, pred);
       chase = true;
     } else {
@@ -490,7 +492,7 @@ function offPuckIntent(world: World, i: number): Intent {
     target = supportAnchor(world, s, carrier);
   } else if (neutralActive(world, s.team, carrier)) {
     ({ target, press } = neutralAnchor(world, s, carrier, puck.carrier));
-  } else if (closestTo(world, s.team, carrier, false) === i) {
+  } else if (closestTo(world, s.team, carrier, false, true) === i) {
     target = routeAroundNet(s, { x: carrier.x + carrier.vx * 0.3, y: carrier.y + carrier.vy * 0.3 });
     press = true;
   } else {

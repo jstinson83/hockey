@@ -1,7 +1,7 @@
 import { describe, expect, it, onTestFinished } from 'vitest';
 import type { Intent } from './input';
 import { addSkater, createWorld, step, type World } from './sim';
-import { GAME, GOAL, RINK, TUNING } from './sim-constants';
+import { FACEOFF, GAME, GOAL, RINK, TUNING } from './sim-constants';
 import { NETS } from './collide';
 
 const DT = 1 / 60;
@@ -759,5 +759,43 @@ describe('offensive zone', () => {
     const w = setUp('overload');
     const strong = w.skaters.filter((s) => s.team === 0 && s.x < CX).length;
     expect(strong).toBeGreaterThanOrEqual(3);
+  });
+
+  it('points: defence stand just inside the blue line, not deep in the zone', () => {
+    const w = setUp('shoot');
+    const depth = role(w, 'RD').y; // red attacks toward y = 0
+    expect(Math.abs(depth - (RINK.h / 2 - TUNING.aiPointDepth))).toBeLessThan(3);
+    expect(RINK.h / 2 - depth).toBeLessThan(FACEOFF.blueLine + 12);
+  });
+});
+
+describe('defence discipline', () => {
+  /** Blue's RD sits just outside the default chase range of a loose puck, a winger a bit further; returns how far each closed on the puck. */
+  const run = (chase: number) => {
+    const saved = TUNING.aiDefenceChase;
+    TUNING.aiDefenceChase = chase;
+    try {
+      const w = createWorld(5);
+      w.humans = [false, false];
+      w.game.phase = 'play';
+      w.puck.carrier = -1;
+      Object.assign(w.puck, { x: CX, y: 100, vx: 0, vy: 0 });
+      const blue = w.skaters.filter((s) => s.team === 1);
+      const place = (role: string, y: number) => { const s = blue.find((o) => o.role === role)!; Object.assign(s, { x: CX, y, vx: 0, vy: 0, lockout: 0 }); return s; };
+      const rd = place('RD', 125);
+      const r = place('R', 132);
+      place('LD', 190); place('C', 190); place('L', 190);
+      for (let i = 0; i < 30; i++) step(w, [idle, idle], DT);
+      return { rd: 125 - rd.y, r: 132 - r.y };
+    } finally {
+      TUNING.aiDefenceChase = saved;
+    }
+  };
+
+  it('a defender beyond its chase range holds position and a forward goes for the puck instead', () => {
+    const limited = run(22);
+    const free = run(1000);
+    expect(limited.r).toBeGreaterThan(free.r + 3); // the winger takes the chase
+    expect(limited.rd).toBeLessThan(free.rd - 1); // the defender no longer charges (it still drifts up with its hold line)
   });
 });
