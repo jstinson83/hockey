@@ -285,6 +285,19 @@ describe('shots', () => {
     expect(Math.abs(x - (CX + 4))).toBeLessThan(40 * TUNING.wristSpread + 0.5);
   });
 
+  it('is more accurate near the net than far from it', () => {
+    const onNet = (y: number): number => {
+      let n = 0;
+      for (let seed = 1; seed <= 60; seed++) {
+        const aim = -Math.PI / 2 + Math.atan2(GOAL.width / 2 - 2, y - GOAL.line);
+        if (Math.abs(crossX(release(seed, CX, y, aim)) - CX) < GOAL.width / 2) n++;
+      }
+      return n;
+    };
+    expect(onNet(30)).toBe(60); // close in: every shot hits the net
+    expect(onNet(150)).toBeLessThan(onNet(30));
+  });
+
   it('is deterministic per seed but not identical across seeds', () => {
     const a = release(5, CX, 60, -Math.PI / 2);
     const b = release(5, CX, 60, -Math.PI / 2);
