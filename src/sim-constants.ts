@@ -64,13 +64,13 @@ export const TUNING = {
   netBounce: 0.3,       // puck restitution off the net frame
   maxPuckSpeed: 160,
   puckMaxStep: 0.6,     // longest distance the loose puck moves between collision checks (keeps it from tunnelling)
-  goalieRadius: 2.1,
-  goalieDownRadius: 2.8, // butterfly: wider, can't move sideways
-  goalieSpeed: 22,
-  goalieReaction: 0.2,   // s: lag in tracking the puck, and delay before committing to a dive
+  goalieRadius: 2.4,
+  goalieDownRadius: 3.2, // butterfly: wider, can't move sideways
+  goalieSpeed: 28,
+  goalieReaction: 0.13,  // s: lag in tracking the puck, and delay before committing to a dive
   goalieDiveTrigger: 45, // puck speed that counts as a shot
-  goalieDiveRange: 24,  // only dives to shots this close to the goal line
-  goalieDiveSpeed: 26,
+  goalieDiveRange: 30,  // only dives to shots this close to the goal line
+  goalieDiveSpeed: 32,
   goalieDiveTime: 0.3,  // s of sideways slide
   goalieDownTime: 0.75, // s spent down before recovering
   goalieBounce: 0.35,   // restitution off the goalie (rebounds)
