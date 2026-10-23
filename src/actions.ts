@@ -70,14 +70,17 @@ function shotAngle(world: World, s: Skater, charge01: number): number {
   const inFront = (o.y - net.gy) * -net.dir > 0;
   const toNet = Math.atan2(dy, RINK.w / 2 - o.x);
   const fy = Math.sin(s.facing);
+  // Accuracy falls off with distance: 0 inside aimNear, 1 at aimFar. Far shots get less pull and more error.
+  const dist = Math.hypot(RINK.w / 2 - o.x, dy);
+  const far = clamp01((dist - TUNING.aimNear) / (TUNING.aimFar - TUNING.aimNear));
   if (inFront && Math.abs(wrapAngle(toNet - s.facing)) < TUNING.aimAssistCone && fy * dy > 0) {
     const xCross = o.x + Math.cos(s.facing) * (dy / fy);
     const reach = GOAL.width / 2 - TUNING.aimInset;
     const targetX = Math.min(Math.max(xCross, RINK.w / 2 - reach), RINK.w / 2 + reach);
     const target = Math.atan2(dy, targetX - o.x);
-    angle += wrapAngle(target - s.facing) * TUNING.aimAssist;
+    angle += wrapAngle(target - s.facing) * TUNING.aimAssist * (1 - far * (1 - TUNING.aimFarAssist));
   }
-  const spread = TUNING.wristSpread + (TUNING.slapSpread - TUNING.wristSpread) * charge01;
+  const spread = (TUNING.wristSpread + (TUNING.slapSpread - TUNING.wristSpread) * charge01) * (1 + far * (TUNING.farSpreadMult - 1));
   return angle + (nextRandom(world) * 2 - 1) * spread;
 }
 

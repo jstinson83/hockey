@@ -46,9 +46,13 @@ export const TUNING = {
   chargeTime: 0.6,    // s of holding for a full slapshot
   aimAssistCone: 1.4, // rad (~80deg): shots within this of the net get pulled toward it
   aimAssist: 1.0,     // how far toward the (post-clamped) net a shot is pulled, 0..1
+  aimNear: 30,        // shot distance (to the net) up to which accuracy is full
+  aimFar: 110,        // distance at which aim assist and spread reach their worst
+  aimFarAssist: 0.35, // aim assist pull left at aimFar (fraction of aimAssist)
+  farSpreadMult: 4,   // spread multiplier at aimFar
   aimInset: 1.5,      // assisted shots aim this far inside the posts
-  wristSpread: 0.035,  // rad of random error per shot
-  slapSpread: 0.07,   // slapshots are faster but sloppier
+  wristSpread: 0.02,   // rad of random error per shot
+  slapSpread: 0.04,   // slapshots are faster but sloppier
 
   // Passing
   passSpeed: 55,
@@ -60,13 +64,13 @@ export const TUNING = {
   netBounce: 0.3,       // puck restitution off the net frame
   maxPuckSpeed: 160,
   puckMaxStep: 0.6,     // longest distance the loose puck moves between collision checks (keeps it from tunnelling)
-  goalieRadius: 2.4,
-  goalieDownRadius: 3.2, // butterfly: wider, can't move sideways
-  goalieSpeed: 28,
-  goalieReaction: 0.13,  // s: lag in tracking the puck, and delay before committing to a dive
+  goalieRadius: 2.1,
+  goalieDownRadius: 2.8, // butterfly: wider, can't move sideways
+  goalieSpeed: 22,
+  goalieReaction: 0.2,   // s: lag in tracking the puck, and delay before committing to a dive
   goalieDiveTrigger: 45, // puck speed that counts as a shot
-  goalieDiveRange: 30,  // only dives to shots this close to the goal line
-  goalieDiveSpeed: 32,
+  goalieDiveRange: 24,  // only dives to shots this close to the goal line
+  goalieDiveSpeed: 26,
   goalieDiveTime: 0.3,  // s of sideways slide
   goalieDownTime: 0.75, // s spent down before recovering
   goalieBounce: 0.35,   // restitution off the goalie (rebounds)
