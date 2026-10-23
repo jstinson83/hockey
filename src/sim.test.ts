@@ -3,6 +3,7 @@ import type { Intent } from './input';
 import { addSkater, createWorld, step, type World } from './sim';
 import { FACEOFF, GAME, GOAL, RINK, TUNING } from './sim-constants';
 import { NETS } from './collide';
+import { reactToPlayers } from './ai';
 
 const DT = 1 / 60;
 const idle: Intent = { x: 0, y: 0, action: false, pass: false };
@@ -569,6 +570,51 @@ describe('AI and control', () => {
       }
     }
     expect(carriers).toBeGreaterThan(5);
+  });
+
+  it('off-puck teammates spread out: less bunching with spacing on than off', () => {
+    // Mean distance from each skater to its nearest teammate, sampled over a long AI-vs-AI game.
+    const meanGap = (): number => {
+      const w = aiWorld(5);
+      let sum = 0;
+      let n = 0;
+      for (let i = 0; i < 60 * 60; i++) {
+        step(w, [idle, idle], DT);
+        if (i % 30) continue;
+        w.skaters.forEach((a, ai) => {
+          if (ai === w.puck.carrier) return;
+          let best = Infinity;
+          w.skaters.forEach((b, bi) => { if (bi !== ai && b.team === a.team) best = Math.min(best, Math.hypot(a.x - b.x, a.y - b.y)); });
+          sum += best; n++;
+        });
+      }
+      return sum / n;
+    };
+    const saved = { s: TUNING.aiSpacing, p: TUNING.aiSpacingPush };
+    onTestFinished(() => { TUNING.aiSpacing = saved.s; TUNING.aiSpacingPush = saved.p; });
+    TUNING.aiSpacing = 0; TUNING.aiSpacingPush = 0;
+    const off = meanGap();
+    TUNING.aiSpacing = saved.s; TUNING.aiSpacingPush = saved.p;
+    expect(meanGap()).toBeGreaterThan(off);
+  });
+
+  it('a defender shades off its puck line toward an opponent near its spot, goal side of them', () => {
+    const w = aiWorld(4);
+    w.skaters.forEach((s) => { s.x = CX; s.y = RINK.h / 2; s.vx = s.vy = 0; });
+    const red = w.skaters.find((s) => s.team === 0 && s.role === 'C')!;
+    const threat = w.skaters.find((s) => s.team === 1 && s.role === 'L')!;
+    threat.x = CX - 12; threat.y = RINK.h - 60; // red defends the bottom net
+    const anchor = { x: CX + 6, y: RINK.h - 58 };
+    const i = w.skaters.indexOf(red);
+    const saved = { w: TUNING.aiWeave, c: TUNING.aiCoverShade };
+    onTestFinished(() => { TUNING.aiWeave = saved.w; TUNING.aiCoverShade = saved.c; });
+    TUNING.aiWeave = 0;
+    TUNING.aiCoverShade = 0;
+    const plain = reactToPlayers(w, i, anchor, false, -1, true);
+    TUNING.aiCoverShade = 0.8;
+    const covered = reactToPlayers(w, i, anchor, false, -1, true);
+    expect(covered.x).toBeLessThan(plain.x - 3);  // slid toward the opponent
+    expect(covered.y).toBeGreaterThan(plain.y);   // and toward our own net
   });
 
   it('is deterministic per seed', () => {

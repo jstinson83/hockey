@@ -97,6 +97,14 @@ export const TUNING = {
   aiTrapLine: 8,        // the trap's wall stands this far on our side of centre ice
   aiTrapGap: 28,        // the trap's wall steps up to stay this far in front of a carrier who is deep in their own end
   aiPressGap: 24,       // under the press, defence stand this far behind the puck carrier
+  aiSpacing: 16,        // off-puck skaters keep their spot this far from teammates
+  aiSpacingPush: 0.8,   // fraction of the overlap they are pushed out of
+  aiCoverRange: 30,     // defence / centre shade toward an opponent this close to their spot
+  aiCoverShade: 0.5,    // how far toward that opponent (goal side) they move
+  aiOpenRange: 14,      // with the puck, support skaters move off opponents this close to their spot
+  aiOpenPush: 0.6,      // fraction of the overlap they are pushed out of
+  aiWeave: 3,           // radius of the idle drift (units)
+  aiWeavePeriod: 3.5,   // s per drift loop
   aiBurstCooldown: 0.55,
   aiCheckChance: 0.5,   // per decision, when within reach of the carrier
 

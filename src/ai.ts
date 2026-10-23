@@ -64,10 +64,11 @@ export interface AiState {
   burstCd: number;
   passCd: number;
   swung: boolean;        // swing breakout: the centre has reached the bottom of its loop and is coming back up
+  weave: number;         // s of AI time, drives the idle drift so a skater at its spot keeps moving
 }
 
 export function newAi(): AiState {
-  return { think: 0, shotHold: 0, releaseFrames: 0, aimX: 0, aimY: 0, pulse: 0, burstCd: 0, passCd: 0, swung: false };
+  return { think: 0, shotHold: 0, releaseFrames: 0, aimX: 0, aimY: 0, pulse: 0, burstCd: 0, passCd: 0, swung: false, weave: 0 };
 }
 
 const CX = RINK.w / 2;
@@ -290,6 +291,64 @@ function neutralAnchor(world: World, s: Skater, carrier: Point, carrierIdx: numb
 }
 
 /**
+ * Reacting to other skaters, layered over a role's anchor (the anchor only knows the puck):
+ *  - spread: stay clear of teammates, so the team covers the ice rather than stacking on one spot;
+ *  - cover:  without the puck, the defence and centre (and any zone-style wall) shade toward the most
+ *            dangerous unmarked opponent nearby, goal side of them, instead of just holding a puck line;
+ *  - open:   with the puck, move off opponents to find open ice for a pass;
+ *  - weave:  a slow drift so skaters at their spot keep moving rather than standing still.
+ */
+export function reactToPlayers(world: World, i: number, anchor: Point, attacking: boolean, carrierIdx: number, covers: boolean): Point {
+  const s = world.skaters[i];
+  let { x, y } = anchor;
+
+
+  if (covers && !attacking) {
+    const own = defendedNet(s.team);
+    let threat: Skater | null = null;
+    let best = Infinity;
+    world.skaters.forEach((o, j) => {
+      if (o.team === s.team || j === carrierIdx || dist(o, anchor) > TUNING.aiCoverRange) return;
+      const away = Math.abs(o.y - own.gy); // nearer our net = more dangerous
+      if (away < best) { best = away; threat = o; }
+    });
+    if (threat) {
+      const o = threat as Skater;
+      const gx = CX - o.x;
+      const gy = own.gy - o.y;
+      const gd = Math.hypot(gx, gy) || 1;
+      const gsX = o.x + o.vx * 0.3 + (gx / gd) * 6; // goal side of them, a little ahead of where they're going
+      const gsY = o.y + o.vy * 0.3 + (gy / gd) * 6;
+      x += (gsX - x) * TUNING.aiCoverShade;
+      y += (gsY - y) * TUNING.aiCoverShade;
+    }
+  }
+
+  for (const o of world.skaters) {
+    if (o === s) continue;
+    const d = dist(o, { x, y });
+    if (o.team === s.team) {
+      if (d < TUNING.aiSpacing) {
+        // Exactly on top of each other: split by role side, then by index, so it stays deterministic.
+        const [ux, uy] = d > 0.01 ? [(x - o.x) / d, (y - o.y) / d] : [sideOf(s.role) || (i % 2 ? 1 : -1), 0];
+        const push = (TUNING.aiSpacing - d) * TUNING.aiSpacingPush;
+        x += ux * push;
+        y += uy * push;
+      }
+    } else if (attacking && d < TUNING.aiOpenRange && d > 0.01) {
+      const push = (TUNING.aiOpenRange - d) * TUNING.aiOpenPush;
+      x += ((x - o.x) / d) * push;
+      y += ((y - o.y) / d) * push;
+    }
+  }
+
+  const phase = (s.ai.weave / TUNING.aiWeavePeriod) * Math.PI * 2 + i * 1.9;
+  x += Math.sin(phase) * TUNING.aiWeave;
+  y += Math.cos(phase * 0.7) * TUNING.aiWeave;
+  return keepIn(x, y);
+}
+
+/**
  * Chasing something behind a net from the front: go round the side first, or the skater just
  * pushes into the frame. (No real pathfinding; this is the one obstacle that matters.)
  */
@@ -344,6 +403,7 @@ function steer(world: World, s: Skater, t: Point, avoid = true): { x: number; y:
 export function aiIntent(world: World, i: number, dt: number): Intent {
   const s = world.skaters[i];
   const ai = s.ai;
+  ai.weave += dt;
   if (world.game.phase !== 'play') {
     ai.shotHold = 0; ai.releaseFrames = 0; ai.pulse = 0;
     return intent(0, 0);
@@ -515,6 +575,14 @@ function offPuckIntent(world: World, i: number): Intent {
     press = true;
   } else {
     target = defendAnchor(world, s, carrier, puck.carrier);
+  }
+
+  // Net-crowding plans and the breakout loops are meant to stack up; everyone else reacts to the other skaters.
+  const crowd = !!carrier && mineHas && (breakingOut(world, s.team, carrier) || (progress(s.team, carrier.y) > 25 && (world.offence[s.team] === 'shoot' || world.offence[s.team] === 'overload')));
+  if (!(chase || press || crowd)) {
+    const attacking = mineHas || (!carrier && progress(s.team, puck.y) > 0);
+    const covers = isDefence(s.role) || s.role === 'C' || (!!carrier && !mineHas && neutralActive(world, s.team, carrier));
+    target = reactToPlayers(world, i, target, attacking, puck.carrier, covers);
   }
 
   const st = steer(world, s, target, !(chase || press));
