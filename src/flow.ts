@@ -23,6 +23,9 @@ export function placeForFaceoff(world: World): void {
     s.lockout = 0;
     s.boost = 0;
     s.checking = 0;
+    s.poking = 0;
+    s.pokeCd = 0;
+    s.pokeHeld = false;
     s.stun = 0;
     s.ai = newAi();
   });

@@ -105,6 +105,11 @@ export const TUNING = {
   checkWindow: 0.35,  // s after a tap during which contact counts as a check
   checkMinSpeed: 13,  // closing speed a check needs to land
   knockChance: 0.55,  // chance that a contact hard enough to count actually strips the carrier
+  pokeReach: 7.5,     // centre-to-centre distance a poke check reaches (a skater is ~4.3 wide)
+  pokeCone: 0.7,      // rad either side of facing the carrier must be within
+  pokeChance: 0.6,    // chance a poke that reaches the carrier knocks the puck loose
+  pokeCooldown: 0.7,  // s before the next poke, hit or miss
+  pokeLunge: 6,       // forward speed added by the stab
   checkBounce: 0.8,
   checkImpulse: 14,   // extra shove on the victim
   checkStun: 0.6,     // s of reduced control
