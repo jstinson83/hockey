@@ -22,7 +22,8 @@ export type Role = 'C' | 'L' | 'R' | 'LD' | 'RD';
  *  - carry:   no plan; the carrier skates it out and the wings run the lanes ahead (the original behaviour).
  *  - boards:  the wing on the carrier's side holds the boards for an outlet pass; the other wing
  *             stays in the middle lane.
- *  - swing:   the centre drops low and wide for a short pass, then leads the rush; the wings spread.
+ *  - swing:   the centre loops: down to the far side of its own goal line, then back up that wing at
+ *             speed as the outlet (the carrier waits for the loop to come round); the wings spread.
  *  - stretch: the far wing flies to the far blue line and the carrier looks for the long pass.
  */
 export const BREAKOUTS = ['carry', 'boards', 'swing', 'stretch'] as const;
@@ -62,10 +63,11 @@ export interface AiState {
   pulse: number;         // frames left holding a burst / check tap
   burstCd: number;
   passCd: number;
+  swung: boolean;        // swing breakout: the centre has reached the bottom of its loop and is coming back up
 }
 
 export function newAi(): AiState {
-  return { think: 0, shotHold: 0, releaseFrames: 0, aimX: 0, aimY: 0, pulse: 0, burstCd: 0, passCd: 0 };
+  return { think: 0, shotHold: 0, releaseFrames: 0, aimX: 0, aimY: 0, pulse: 0, burstCd: 0, passCd: 0, swung: false };
 }
 
 const CX = RINK.w / 2;
@@ -143,6 +145,16 @@ function breakoutTarget(world: World, i: number): number {
   return world.skaters.findIndex((m, j) => j !== i && m.team === s.team && m.role === role);
 }
 
+/** The swing breakout's centre: loop down to the far side of the goal line, then up that wing as the outlet. */
+function swingCentre(s: Skater, carrier: Point): Point {
+  const fwd = attackedNet(s.team).dir;
+  const farSide = carrier.x < CX ? 1 : -1;
+  const wideX = farSide < 0 ? 12 : RINK.w - 12;
+  const bottom = keepIn(wideX, defendedNet(s.team).gy + fwd * TUNING.aiSwingLow);
+  if (!s.ai.swung && dist(s, bottom) < 7) s.ai.swung = true;
+  return s.ai.swung ? keepIn(wideX, carrier.y + fwd * 30) : bottom;
+}
+
 /** Where a skater stands during a breakout; the carrier's side decides which wing is "strong". */
 function breakoutAnchor(plan: Breakout, s: Skater, carrier: Point): Point {
   const fwd = attackedNet(s.team).dir;
@@ -156,7 +168,7 @@ function breakoutAnchor(plan: Breakout, s: Skater, carrier: Point): Point {
       if (s.role === 'C') return keepIn(CX - cSide * 14, carrier.y - fwd * 6);
       return strong ? keepIn(wide(side, 7), carrier.y + fwd * 24) : keepIn(CX, carrier.y + fwd * 38);
     case 'swing':
-      if (s.role === 'C') return keepIn(CX - cSide * 18, carrier.y - fwd * 9);
+      if (s.role === 'C') return swingCentre(s, carrier);
       return keepIn(wide(side, 12), carrier.y + fwd * 30);
     default: // stretch
       if (s.role === 'C') return keepIn(CX - cSide * 12, carrier.y - fwd * 6);
@@ -340,7 +352,7 @@ export function aiIntent(world: World, i: number, dt: number): Intent {
   ai.passCd = Math.max(0, ai.passCd - dt);
   ai.think -= dt;
 
-  if (world.puck.carrier === i) return carrierIntent(world, i, dt);
+  if (world.puck.carrier === i) { ai.swung = false; return carrierIntent(world, i, dt); }
   ai.shotHold = 0;
   ai.releaseFrames = 0;
   return offPuckIntent(world, i);
@@ -415,6 +427,7 @@ function breakoutPass(world: World, i: number): Point | null {
   const m = world.skaters[j];
   const d = dist(s, m);
   if (d < 8 || d > (world.breakout[s.team] === 'stretch' ? 130 : 70)) return null;
+  if (world.breakout[s.team] === 'swing' && !m.ai.swung) return null; // wait for the loop to come round
   if (laneBlocked(world, s.team, s, m) || nearestOpponent(world, s.team, m) < 6) return null;
   return m;
 }
@@ -478,6 +491,7 @@ function offPuckIntent(world: World, i: number): Intent {
   const puck = world.puck;
   const carrier = puck.carrier >= 0 ? world.skaters[puck.carrier] : null;
   const mineHas = !!carrier && carrier.team === s.team;
+  if (!carrier || !mineHas || !breakingOut(world, s.team, carrier)) ai.swung = false;
   const pred = { x: clamp(puck.x + puck.vx * 0.25, 2, RINK.w - 2), y: clamp(puck.y + puck.vy * 0.25, 2, RINK.h - 2) };
 
   let target: Point;

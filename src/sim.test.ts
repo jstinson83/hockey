@@ -476,6 +476,22 @@ describe('breakouts', () => {
     expect(carry).not.toEqual([1, 0]);
   });
 
+  it('swing: the centre loops down to the far goal line and comes back up that wing while the carrier waits', () => {
+    const w = breakWorld('swing', 1); // the left wing holds the puck; make red's puck carrier human-held (never passes)
+    w.skaters[1].ai.passCd = 99;
+    let low = 0;
+    for (let i = 0; i < 240; i++) {
+      step(w, [idle, idle], DT);
+      w.puck.carrier = 1; w.skaters[1].vx = w.skaters[1].vy = 0;
+      low = Math.max(low, w.skaters[0].y);
+    }
+    const c = w.skaters[0];
+    expect(low).toBeGreaterThan(NETS[1].gy - TUNING.aiSwingLow - 8); // dropped to the bottom of the loop
+    expect(c.x).toBeGreaterThan(CX + 20);                           // far side from the carrier
+    expect(c.y).toBeLessThan(170);                                  // then came back up ice
+    expect(c.ai.swung).toBe(true);
+  });
+
   it('the wings take different lanes under different plans', () => {
     const wingX = (plan: 'boards' | 'swing' | 'stretch'): number => {
       const w = breakWorld(plan, 0);

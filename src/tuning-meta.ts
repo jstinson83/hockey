@@ -116,6 +116,7 @@ export const TUNING_GROUPS: Group[] = [
       { key: 'aiPassCooldown', label: 'Pass cooldown (s)', min: 0.2, max: 3, step: 0.1 },
       { key: 'aiPressure', label: 'Pressure distance', min: 3, max: 20, step: 1 },
       { key: 'aiBreakoutDepth', label: 'Breakout zone depth', min: 10, max: 90, step: 1, hint: 'units inside own half' },
+      { key: 'aiSwingLow', label: 'Swing loop depth', min: 0, max: 30, step: 1, hint: 'units up-ice of own goal line' },
       { key: 'aiDefenceGap', label: 'Defence gap', min: 0.2, max: 1, step: 0.05, hint: 'fraction of net-to-puck distance' },
       { key: 'aiDefenceChase', label: 'Defence chase range', min: 0, max: 80, step: 1, hint: 'beyond this they hold position' },
       { key: 'aiPointDepth', label: 'Point depth (O-zone)', min: 28, max: 70, step: 1, hint: 'units past centre; blue line is 28' },
