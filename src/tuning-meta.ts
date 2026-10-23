@@ -56,6 +56,7 @@ export const TUNING_GROUPS: Group[] = [
       { key: 'chargeTime', label: 'Slapshot charge (s)', min: 0.1, max: 1.5, step: 0.05 },
       { key: 'aimAssistCone', label: 'Aim assist cone (rad)', min: 0, max: 2.5, step: 0.05 },
       { key: 'aimAssist', label: 'Aim assist pull', min: 0, max: 1, step: 0.05 },
+      { key: 'aimCloseRange', label: 'Always-on-net range', min: 0, max: 80, step: 1 },
       { key: 'aimNear', label: 'Full accuracy within', min: 0, max: 100, step: 1 },
       { key: 'aimFar', label: 'Worst accuracy at', min: 20, max: 200, step: 1 },
       { key: 'aimFarAssist', label: 'Aim assist at far range', min: 0, max: 1, step: 0.05 },

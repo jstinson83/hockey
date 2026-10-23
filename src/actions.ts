@@ -99,12 +99,20 @@ function shotAngle(world: World, s: Skater, charge01: number): number {
   // Accuracy falls off with distance: 0 inside aimNear, 1 at aimFar. Far shots get less pull and more error.
   const dist = Math.hypot(RINK.w / 2 - o.x, dy);
   const far = clamp01((dist - TUNING.aimNear) / (TUNING.aimFar - TUNING.aimNear));
-  if (inFront && Math.abs(wrapAngle(toNet - s.facing)) < TUNING.aimAssistCone && fy * dy > 0) {
-    const xCross = o.x + Math.cos(s.facing) * (dy / fy);
+  // Right in front of the net (a deke, a one-timer while sliding across) the shot always goes at
+  // the net, whatever way the skater is facing; further out the facing has to be roughly ahead.
+  const close = inFront && dist < TUNING.aimCloseRange;
+  const ahead = inFront && Math.abs(wrapAngle(toNet - s.facing)) < TUNING.aimAssistCone && fy * dy > 0;
+  if (ahead || close) {
     const reach = GOAL.width / 2 - TUNING.aimInset;
+    // Follow the facing ray's crossing when it points reasonably at the goal line; a near-parallel
+    // ray crosses miles away and would clamp to a post, so lean toward the faced side instead.
+    const xCross = ahead && Math.abs(fy) > 0.3
+      ? o.x + Math.cos(s.facing) * (dy / fy)
+      : RINK.w / 2 + Math.cos(s.facing) * reach * 0.5;
     const targetX = Math.min(Math.max(xCross, RINK.w / 2 - reach), RINK.w / 2 + reach);
     const target = Math.atan2(dy, targetX - o.x);
-    angle += wrapAngle(target - s.facing) * TUNING.aimAssist * (1 - far * (1 - TUNING.aimFarAssist));
+    angle += wrapAngle(target - s.facing) * (close && !ahead ? 1 : TUNING.aimAssist) * (1 - far * (1 - TUNING.aimFarAssist));
   }
   const spread = (TUNING.wristSpread + (TUNING.slapSpread - TUNING.wristSpread) * charge01) * (1 + far * (TUNING.farSpreadMult - 1));
   return angle + (nextRandom(world) * 2 - 1) * spread;
