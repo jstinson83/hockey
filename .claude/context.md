@@ -32,7 +32,7 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
 - Skater AI: 5v5 teams, roles (C/L/R/LD/RD), carrier decisions, switching.
 - AI strategies, first slice: per-team breakout plans (`World.breakout`: carry / boards / swing /
   stretch) that change support anchors and the carrier's designated outlet pass while it is deep in
-  its own end. Plans are switches inside `ai.ts`; each new game rolls one per team at random (`main.ts`), B / N override. The AI does not choose plans itself yet.
+  its own end. Plans are switches inside `ai.ts`; every new game defaults both teams to swing / press / cycle (`main.ts`); B / N override. The AI does not choose plans itself yet.
   Swing is a real loop: the centre skates down to the far side of its own goal line (`aiSwingLow`), then up that wing
   (`AiState.swung`), and the carrier only passes to him once he's coming back up.
   Offensive-zone plans too (`World.offence`: set / shoot / cycle / overload; O / L override): they move the
@@ -47,6 +47,6 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
   dangerous nearby opponent (`aiCover*`), support skaters step off opponents to get open (`aiOpen*`), and a
   slow idle drift (`aiWeave*`, `AiState.weave`) keeps them moving. Breakout loops and the shoot / overload
   net-crowding plans are exempt on purpose.
-- Pause menu has per-team strategy dropdowns (`strategy-menu.ts`); plans are still random per new game.
+- Pause menu has per-team strategy dropdowns (`strategy-menu.ts`); defaults are swing breakout, press neutral zone, cycle offence.
 - Live tuning panel (`T`) with copy-out of changed values.
 - Pause screen, fullscreen, AI-vs-AI demo (`D`).
