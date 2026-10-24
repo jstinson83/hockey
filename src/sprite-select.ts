@@ -30,7 +30,7 @@ const at = (anim: SkaterAnimName | GoalieAnimName, progress: number): number => 
 
 function oneShot(anim: SkaterAnimName, t: number): number | null {
   const d = SKATER_ANIMS[anim];
-  const f = Math.floor(t * d.fps);
+  const f = Math.floor(t * d.fps * VIEW.animSpeed);
   return f < d.frames ? f : null;
 }
 
@@ -46,15 +46,15 @@ export function pickSkater(s: Skater, c: SkaterCtx): SkaterShow {
     if (f !== null) return show(s.act, f);
   }
   if (c.hasPuck && s.charge > 0) return show('wind', at('wind', s.charge / TUNING.chargeTime));
-  if (c.celebrating) return show('celebrate', Math.floor(c.clock * SKATER_ANIMS.celebrate.fps) % SKATER_ANIMS.celebrate.frames);
+  if (c.celebrating) return show('celebrate', Math.floor(c.clock * VIEW.animSpeed * SKATER_ANIMS.celebrate.fps) % SKATER_ANIMS.celebrate.frames);
   if (c.phase === 'faceoff' && speed < 2) return show('faceoff', 0);
 
   if (speed > 2.5) {
     const anim = s.boost > 1 && speed > TUNING.maxSpeed * 0.85 ? 'burst' : 'skate';
     const n = SKATER_ANIMS[anim].frames;
-    return show(anim, Math.floor((c.dist / VIEW.strideUnits) * n) % n);
+    return show(anim, Math.floor((c.dist * VIEW.animSpeed / VIEW.strideUnits) * n) % n);
   }
-  return show('idle', Math.floor(c.clock * SKATER_ANIMS.idle.fps) % SKATER_ANIMS.idle.frames);
+  return show('idle', Math.floor(c.clock * VIEW.animSpeed * SKATER_ANIMS.idle.fps) % SKATER_ANIMS.idle.frames);
 }
 
 export interface GoalieCtx { clock: number }
@@ -73,5 +73,5 @@ export function pickGoalie(g: Goalie, c: GoalieCtx): GoalieShow {
     if (g.down < up.frames / up.fps) return { anim: 'getup', frame: at('getup', 1 - g.down / (up.frames / up.fps)), toward };
     return { anim: 'butterfly', frame: 0, toward };
   }
-  return { anim: 'stand', frame: Math.floor(c.clock * GOALIE_ANIMS.stand.fps) % GOALIE_ANIMS.stand.frames, toward };
+  return { anim: 'stand', frame: Math.floor(c.clock * VIEW.animSpeed * GOALIE_ANIMS.stand.fps) % GOALIE_ANIMS.stand.frames, toward };
 }
