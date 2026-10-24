@@ -55,7 +55,7 @@ export interface Puck {
   passTo: number;       // skater a pass in flight was aimed at, or -1
 }
 
-export type Phase = 'faceoff' | 'play' | 'goal' | 'end';
+export type Phase = 'faceoff' | 'play' | 'goal' | 'intermission' | 'end';
 
 /** The draw at a faceoff: a count-in, the ref's drop, and a short window to time the pass button. */
 export interface Faceoff {
@@ -72,7 +72,7 @@ export interface Faceoff {
 
 export interface Game {
   phase: Phase;
-  timer: number;      // s left in a goal pause
+  timer: number;      // s left in a goal pause or period intermission
   faceoff: Faceoff;   // the current (or last) draw
   period: number;     // 1-based; the overtime period is periods + 1
   overtime: boolean;

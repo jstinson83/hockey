@@ -84,6 +84,9 @@ export function advancePhase(world: World, dt: number): void {
     if (g.clock === 0) endPeriod(world);
   } else if (g.phase === 'faceoff') {
     if (g.faceoff.result) g.phase = 'play'; // the drop is resolved by updateFaceoff
+  } else if (g.phase === 'intermission') {
+    g.timer -= dt;
+    if (g.timer <= 0) startFaceoff(world);
   } else if (g.phase === 'goal') {
     g.timer -= dt;
     if (g.timer <= 0) {
@@ -100,13 +103,21 @@ function endPeriod(world: World): void {
   } else if (g.period < GAME.periods) {
     g.period++;
     g.clock = GAME.periodSeconds;
-    startFaceoff(world);
+    startIntermission(world);
   } else if (g.score[0] !== g.score[1]) {
     g.phase = 'end';
   } else {
     g.overtime = true;
     g.period++;
     g.clock = GAME.overtimeSeconds;
-    startFaceoff(world);
+    startIntermission(world);
   }
+}
+
+/** Between periods: play stops for a breather (the horn sounds as it starts), then the next period's faceoff. */
+function startIntermission(world: World): void {
+  placeForFaceoff(world);
+  world.game.phase = 'intermission';
+  world.game.timer = GAME.intermissionSeconds;
+  world.game.froze = null;
 }
