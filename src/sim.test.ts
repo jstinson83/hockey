@@ -5,6 +5,7 @@ import { FACEOFF, GAME, GOAL, RINK, TUNING } from './sim-constants';
 import { NETS } from './collide';
 import { reactToPlayers } from './ai';
 import { faceoffMaxSeconds } from './faceoff';
+import { placeForFaceoff } from './flow';
 
 const DT = 1 / 60;
 const idle: Intent = { x: 0, y: 0, action: false, pass: false };
@@ -427,6 +428,32 @@ describe('shots', () => {
       if (w.game.score[0] > 0) goals++;
     }
     expect(goals).toBeLessThan(n);
+  });
+});
+
+describe('faceoff line-up', () => {
+  it('centres square off over the dot, wingers stand outside the circle, defence sit back; everyone faces the dot', () => {
+    const w = createWorld(1);
+    const dot = { x: CX, y: RINK.h / 2 };
+    for (const team of [0, 1] as const) {
+      const [c, l, r, ld, rd] = w.skaters.filter((s) => s.team === team);
+      const side = team === 0 ? 1 : -1;
+      expect(c.x).toBeCloseTo(dot.x);
+      expect(Math.abs(c.y - dot.y)).toBeGreaterThan(TUNING.pickupRadius);
+      expect(Math.abs(c.y - dot.y)).toBeLessThan(8);
+      [l, r].forEach((wing) => expect(Math.hypot(wing.x - dot.x, wing.y - dot.y)).toBeGreaterThan(FACEOFF.radius));
+      expect(l.x).not.toBeCloseTo(r.x);
+      [ld, rd].forEach((d) => expect((d.y - dot.y) * side).toBeGreaterThan((l.y - dot.y) * side));
+      const toDot = Math.atan2(dot.y - c.y, dot.x - c.x);
+      expect(c.facing).toBeCloseTo(toDot);
+    }
+  });
+
+  it('keeps wingers on the ice at an end-zone dot beside the boards', () => {
+    const w = createWorld(1);
+    w.skaters.forEach((s) => { s.x = 0; });
+    placeForFaceoff(w, { x: CX + FACEOFF.dx, y: 31 });
+    w.skaters.forEach((s) => expect(s.x).toBeLessThan(RINK.w - TUNING.skaterRadius));
   });
 });
 
@@ -1026,6 +1053,7 @@ describe('defence discipline', () => {
       w.game.phase = 'play';
       w.puck.carrier = -1;
       Object.assign(w.puck, { x: CX, y: 100, vx: 0, vy: 0 });
+      w.skaters.filter((s) => s.team === 0).forEach((s) => Object.assign(s, { x: 5, y: 195 })); // red out of the way
       const blue = w.skaters.filter((s) => s.team === 1);
       const place = (role: string, y: number) => { const s = blue.find((o) => o.role === role)!; Object.assign(s, { x: CX, y, vx: 0, vy: 0, lockout: 0 }); return s; };
       const rd = place('RD', 125);
@@ -1097,7 +1125,7 @@ describe('faceoff draw', () => {
       const w = toDrop(seed);
       step(w, [idle, idle], DT);
       step(w, [pass(-1, 0), idle], DT); // right on the drop, before the AI reacts
-      run(w, 0.6);
+      while (!w.game.faceoff.result) step(w, [idle, idle], DT);
       const r = w.game.faceoff.result!;
       expect(r.winner).toBe(0);
       if (r.clean) expect(w.puck.vx).toBeLessThan(-TUNING.faceoffSpeed * 0.9);
@@ -1134,7 +1162,7 @@ describe('faceoff draw', () => {
   it('when nobody presses, the puck squirts loose', () => {
     const w = createWorld(3, { perTeam: 1 });
     w.humans = [true, true];
-    run(w, faceoffMaxSeconds());
+    while (!w.game.faceoff.result) step(w, [idle, idle], DT);
     expect(w.game.faceoff.result).toEqual({ winner: null, clean: false });
     expect(Math.hypot(w.puck.vx, w.puck.vy)).toBeGreaterThan(5);
   });
