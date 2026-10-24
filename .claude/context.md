@@ -18,7 +18,7 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
 - Player switching is manual: the pass button without the puck, or automatic
   when a teammate picks the puck up.
 - Visual target is the NHL 94 look (oblique view, crowd, scratched ice).
-  Players are procedural placeholder sprites (puppet rig baked to 8 facings, `sprite-*.ts`); real art
+  Players are procedural placeholder sprites (puppet rig baked to 8 facings, `sprite-*.ts`; two-handed stick grip, IK arms and legs, styled after the reference action-frames image); real art
   replaces `getSprite` and keeps the frame set in `sprite-poses.ts`.
 - Art, sound and online play come last.
 
