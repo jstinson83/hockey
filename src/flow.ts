@@ -33,7 +33,7 @@ export function placeForFaceoff(world: World, spot?: { x: number; y: number }): 
     s.ai = newAi();
   });
   world.goalies.forEach((g, i) => Object.assign(g, makeGoalie(i as Team)));
-  Object.assign(world.puck, { x: sx, y: sy, vx: 0, vy: 0, carrier: -1 });
+  Object.assign(world.puck, { x: sx, y: sy, vx: 0, vy: 0, carrier: -1, passTeam: -1, passTime: 0 });
   // Each human starts on their centre.
   world.controlled = [world.skaters.findIndex((s) => s.team === 0), world.skaters.findIndex((s) => s.team === 1)];
 }

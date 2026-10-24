@@ -31,6 +31,8 @@ export const TUNING = {
   carryOffset: 3.4,   // puck distance from skater centre while carried
   pickupSpeed: 70,    // free puck faster than this can't be picked up
   pickupRadius: 4.2,  // skater centre -> puck centre
+  passProtectTime: 1.0, // s after a pass during which opponents have a shorter reach on the puck
+  passInterceptReach: 0.55, // opponents' pickup reach on a pass in flight, as a fraction of pickupRadius
   shooterLockout: 0.35, // s before the shooter can re-collect their own shot
 
   // Burst: tapping the shoot button without the puck. Each tap kicks the skater forward
@@ -125,7 +127,7 @@ export const TUNING = {
   aiSpacingPush: 0.8,   // fraction of the overlap they are pushed out of
   aiCoverRange: 30,     // defence / centre shade toward an opponent this close to their spot
   aiCoverShade: 0.5,    // how far toward that opponent (goal side) they move
-  aiCoverDefenceDepth: 45, // an opposing defenceman is only marked inside this distance of our net; out at the points they are left open
+  aiCoverDefenceDepth: 40, // an opponent is only marked inside this distance of our net; out at the points they are left open
   aiOpenRange: 14,      // with the puck, support skaters move off opponents this close to their spot
   aiOpenPush: 0.6,      // fraction of the overlap they are pushed out of
   aiWeave: 3,           // radius of the idle drift (units)

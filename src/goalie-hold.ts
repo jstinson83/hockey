@@ -28,6 +28,7 @@ export function tryCatch(world: World, g: Goalie, speed: number): boolean {
   // Buttons already down when the puck sticks don't count; the player has to press again.
   g.passHeld = g.actionHeld = g.pokeHeld = true;
   world.puck.carrier = -1;
+  world.puck.passTime = 0;
   world.puck.vx = world.puck.vy = 0;
   return true;
 }

@@ -49,6 +49,8 @@ export interface Puck {
   x: number; y: number;
   vx: number; vy: number;
   carrier: number; // index into skaters, or -1 when loose
+  passTeam: -1 | 0 | 1; // team that just passed it, or -1; opponents have a shorter reach while passTime runs
+  passTime: number;     // s of pass protection left
 }
 
 export type Phase = 'faceoff' | 'play' | 'goal' | 'end';
