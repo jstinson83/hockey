@@ -10,6 +10,7 @@ const LEVEL = 0.35; // crowd bed sits under the action
 const WHISTLE_LEVEL = 0.5;
 const HORN_LEVEL = 0.6;
 const ORGAN_LEVEL = 0.5;
+const ORGAN_LOOPS = [2, 3]; // the riff repeats this many times (picked at random)
 const MUTE_KEY = 'hockey.muted';
 
 export interface Ambience {
@@ -20,7 +21,7 @@ export interface Ambience {
   whistle(): void;
   /** The scoreboard horn at the end of a period. */
   horn(): void;
-  /** The arena organ's "charge" riff (home goal, a new period). */
+  /** The arena organ's "charge" riff (home goal, faceoffs, now and then in play), repeated 2-3 times; ignored while it is still playing. */
   organ(): void;
 }
 
@@ -33,9 +34,12 @@ export function initAmbience(): Ambience {
   let whistleBuffer: AudioBuffer | null = null;
   let hornBuffer: AudioBuffer | null = null;
   let organBuffer: AudioBuffer | null = null;
+  let organGain: GainNode | null = null; // so pausing or muting silences a riff already under way
+  let organUntil = 0; // ctx time the current riff ends
 
   const apply = () => {
     if (ctx && gain) gain.gain.setTargetAtTime(active && !muted ? LEVEL : 0, ctx.currentTime, 0.15);
+    if (ctx && organGain) organGain.gain.setTargetAtTime(active && !muted ? ORGAN_LEVEL : 0, ctx.currentTime, 0.15);
   };
 
   async function start(): Promise<void> {
@@ -43,6 +47,9 @@ export function initAmbience(): Ambience {
     gain = ctx.createGain();
     gain.gain.value = 0;
     gain.connect(ctx.destination);
+    organGain = ctx.createGain();
+    organGain.gain.value = 0;
+    organGain.connect(ctx.destination);
     const buffer = await ctx.decodeAudioData(await (await fetch(crowdUrl)).arrayBuffer());
     const src = ctx.createBufferSource();
     src.buffer = buffer;
@@ -81,7 +88,18 @@ export function initAmbience(): Ambience {
     },
     whistle() { playOnce(whistleBuffer, WHISTLE_LEVEL); },
     horn() { playOnce(hornBuffer, HORN_LEVEL); },
-    organ() { playOnce(organBuffer, ORGAN_LEVEL); },
+    organ() {
+      if (!ctx || !organGain || !organBuffer || muted || !active || ctx.currentTime < organUntil) return;
+      const loops = ORGAN_LOOPS[Math.floor(Math.random() * ORGAN_LOOPS.length)];
+      const t0 = ctx.currentTime + 0.05;
+      for (let i = 0; i < loops; i++) {
+        const src = ctx.createBufferSource();
+        src.buffer = organBuffer;
+        src.connect(organGain);
+        src.start(t0 + i * organBuffer.duration);
+      }
+      organUntil = t0 + loops * organBuffer.duration;
+    },
     toggleMute() {
       muted = !muted;
       try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch { /* ignore */ }
