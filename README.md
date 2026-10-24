@@ -18,6 +18,8 @@ bodycheck window. P / Esc / the Options button pauses (it also pauses when the t
 focus). R resets, F toggles fullscreen, S mutes the crowd noise. Each game starts both teams on the cycle offence, swing breakout and press neutral zone (shown above the scoreboard; change them from the pause menu or the keys below);
 B / N cycle red's / blue's breakout (carry, boards, swing, stretch), V / M their neutral-zone defence (man, trap, press),
 O / L their offensive-zone play (set, shoot, cycle, overload).
+A goalie that catches the puck holds it (slow pucks nearly always, slapshots rarely) and its human steers it along the crease: pass = pass to the teammate you aim at,
+shoot = hard clear up-ice, poke = freeze it for a whistle and an end-zone faceoff (held too long, the whistle goes on its own). The AI goalie passes it out or freezes it after a moment.
 Browsers only report a gamepad after a button press on it.
 
 ## Layout
@@ -28,6 +30,7 @@ Browsers only report a gamepad after a button press on it.
 - `src/sim.ts` also owns the game flow (faceoff -> play -> goal -> faceoff, 3x2:00 periods,
   sudden-death overtime, final) and the goalies: physical blockers with a reaction delay and a
   butterfly dive, so saves come from collisions and are tunable via `TUNING.goalie*`.
+- `src/goalie-hold.ts` - a goalie freezing the puck (speed-based catch chance), the hold controls / AI, and the whistle (`flow.ts` places the end-zone faceoff).
 - `src/ai.ts` - skater AI (5v5 by default: C, L, R, LD, RD). Team plan (support / defend / chase / press anchors by
   role: C, L, R), carrier decisions (shoot / pass / carry, a few times a second, seeded random), and
   steering that emits the same `Intent` a human would. Each human controls one skater per team

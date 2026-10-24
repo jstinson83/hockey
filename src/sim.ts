@@ -2,6 +2,7 @@ import { aiIntent, newAi, type Breakout, type Neutral, type Offence, type Role }
 import { collideCircles, collideNet, collideStatic, defendedNet, bounceOffBoards, NETS } from './collide';
 import { handleButtons } from './actions';
 import { advancePhase, checkGoal, placeForFaceoff } from './flow';
+import { updateHold } from './goalie-hold';
 import { goalieRadius, makeGoalie, updateGoalie } from './goalie';
 import type { Intent } from './input';
 import { knockLoose, updatePuck } from './puck';
@@ -16,6 +17,7 @@ export type { Breakout, Neutral };
 export { BREAKOUTS, NEUTRALS, OFFENCES } from './ai';
 export type { Act, Game, Goalie, Phase, Puck, Skater, World } from './sim-types';
 
+const IDLE: Intent = { x: 0, y: 0, action: false, pass: false };
 const ROLES: Role[] = ['C', 'L', 'R', 'LD', 'RD'];
 
 function makeSkater(team: Team, slot: number): Skater {
@@ -40,7 +42,7 @@ export function createWorld(seed = 1, opts: { perTeam?: number; breakout?: [Brea
     puck: { x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, carrier: -1 },
     game: {
       phase: 'faceoff', timer: GAME.faceoffSeconds, period: 1, overtime: false,
-      clock: GAME.periodSeconds, score: [0, 0], lastScorer: null,
+      clock: GAME.periodSeconds, score: [0, 0], lastScorer: null, froze: null,
     },
     rng: seed | 0,
     humans: [true, true],
@@ -75,9 +77,11 @@ export function step(world: World, human: Intent[], dt: number): void {
   const { skaters, goalies, game } = world;
   const controllable = game.phase === 'play' || game.phase === 'goal';
 
-  updateControlled(world, human, dt);
+  // While a goalie holds the puck its human drives the goalie, so the buttons don't also switch skaters.
+  updateControlled(world, human.map((h, t) => (goalies[t].holding ? IDLE : h)), dt);
+  // A human whose goalie is holding the puck steers the goalie instead; their skater is left to the AI.
   const intents: (Intent | undefined)[] = skaters.map((s, i) =>
-    world.humans[s.team] && world.controlled[s.team] === i ? human[s.team] : aiIntent(world, i, dt),
+    world.humans[s.team] && world.controlled[s.team] === i && !goalies[s.team].holding ? human[s.team] : aiIntent(world, i, dt),
   );
 
   skaters.forEach((s, i) => moveSkater(s, controllable ? intents[i] : undefined, dt));
@@ -110,7 +114,11 @@ export function step(world: World, human: Intent[], dt: number): void {
     bounceOffBoards(s, TUNING.skaterRadius, TUNING.wallBounce);
   });
 
-  goalies.forEach((g) => updateGoalie(world, g, dt));
+  goalies.forEach((g) => {
+    const isHuman = world.humans[g.team];
+    updateGoalie(world, g, dt, isHuman ? human[g.team] : undefined);
+    updateHold(world, g, human[g.team], isHuman, dt);
+  });
   skaters.forEach((s) => goalies.forEach((g) => collideStatic(s, TUNING.skaterRadius, g, goalieRadius(g), 0.2)));
 
   updatePuck(world, dt);

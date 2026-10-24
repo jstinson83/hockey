@@ -720,7 +720,14 @@ function drawHud(ctx: CanvasRenderingContext2D, world: World): void {
   } else if (g.phase === 'faceoff') {
     ctx.font = font(30);
     const fresh = g.clock === (g.overtime ? GAME.overtimeSeconds : GAME.periodSeconds);
-    outlinedText(ctx, fresh ? `${periodLabel(world)} PERIOD` : 'FACEOFF', cx, cy, '#f2f4f7');
+    outlinedText(ctx, fresh ? `${periodLabel(world)} PERIOD` : g.froze !== null ? 'WHISTLE' : 'FACEOFF', cx, cy, '#f2f4f7');
+    if (g.froze !== null) {
+      ctx.font = font(18);
+      outlinedText(ctx, `${TEAM_NAMES[g.froze]} GOALIE FREEZES THE PUCK`, cx, cy + 34, '#f2f4f7');
+    }
+  } else if (g.phase === 'play' && world.goalies.some((gl) => gl.holding && world.humans[gl.team])) {
+    ctx.font = font(16);
+    outlinedText(ctx, 'GOALIE HAS IT:  PASS = pass   SHOOT = clear   POKE = freeze', cx, VIEW.height - 40, '#f2f4f7');
   } else if (g.phase === 'end') {
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(0, 0, VIEW.width, VIEW.height);

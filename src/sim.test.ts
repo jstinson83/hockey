@@ -118,6 +118,87 @@ describe('goalie', () => {
   });
 });
 
+describe('goalie holding the puck', () => {
+  /** Shot straight at blue's goalie (top net) from `fromY`; returns once the first contact has resolved. */
+  function shotAtGoalie(seed: number, speed: number): World {
+    const w = liveWorld();
+    w.rng = seed;
+    w.puck.x = CX; w.puck.y = 28; w.puck.vx = 0; w.puck.vy = -speed;
+    w.goalies[1].x = CX;
+    for (let i = 0; i < 120 && !w.goalies[1].holding; i++) step(w, [idle, idle], DT);
+    return w;
+  }
+  const heldRate = (speed: number): number => {
+    let n = 0;
+    for (let seed = 1; seed <= 60; seed++) if (shotAtGoalie(seed, speed).goalies[1].holding) n++;
+    return n / 60;
+  };
+
+  it('holds slow shots almost always, and hard shots less often but still sometimes', () => {
+    const slow = heldRate(30);
+    const hard = heldRate(125);
+    expect(slow).toBeGreaterThan(0.8);
+    expect(hard).toBeGreaterThan(0);
+    expect(hard).toBeLessThan(slow - 0.3);
+  });
+
+  it('pins the puck in front of the goalie, which the other team cannot pick up', () => {
+    const w = shotAtGoalie(1, 30);
+    expect(w.goalies[1].holding).toBe(true);
+    w.skaters[0].x = CX; w.skaters[0].y = w.puck.y + 3; // right next to the puck
+    run(w, 1, [idle, { x: 1, y: 0, action: false, pass: false }]);
+    expect(w.puck.carrier).toBe(-1);
+    expect(Math.abs(w.puck.x - w.goalies[1].x)).toBeLessThan(0.01);
+    expect(w.goalies[1].x).toBeGreaterThan(CX); // the human walked the goalie along the crease
+    expect(w.game.phase).toBe('play');
+  });
+
+  it('a human goalie can pass the puck out to a teammate', () => {
+    const w = shotAtGoalie(1, 30);
+    w.humans = [true, true];
+    const mate = w.skaters[1];
+    mate.x = CX; mate.y = 70;
+    step(w, [idle, idle], DT);
+    step(w, [idle, { x: 0, y: 1, action: false, pass: true }], DT);
+    expect(w.goalies[1].holding).toBe(false);
+    expect(w.puck.vy).toBeGreaterThan(0); // away from its own (top) net
+    run(w, 1.2, [idle, idle]);
+    expect(w.puck.carrier).toBe(1);
+  });
+
+  it('a human goalie can freeze the puck: whistle and a faceoff on the dot in their zone', () => {
+    const w = shotAtGoalie(1, 30);
+    w.puck.x = CX + 3;
+    w.goalies[1].x = CX + 3;
+    step(w, [idle, idle], DT);
+    step(w, [idle, { x: 0, y: 0, action: false, pass: false, poke: true }], DT);
+    expect(w.game.phase).toBe('faceoff');
+    expect(w.game.froze).toBe(1);
+    expect(w.puck.x).toBeCloseTo(CX + FACEOFF.dx);
+    expect(w.puck.y).toBeCloseTo(NETS[0].gy + FACEOFF.endZoneFromGoalLine);
+    expect(w.goalies[1].holding).toBe(false);
+    expect(w.skaters[0].y).toBeGreaterThan(w.puck.y); // attackers on the centre-ice side, defenders on the net side
+    expect(w.skaters[1].y).toBeLessThan(w.puck.y);
+    run(w, GAME.faceoffSeconds + 0.1);
+    expect(w.game.phase).toBe('play');
+  });
+
+  it('a hold that goes on too long is whistled dead', () => {
+    const w = shotAtGoalie(1, 30);
+    run(w, TUNING.goalieHoldMax + 0.2, [idle, idle]);
+    expect(w.game.phase).toBe('faceoff');
+    expect(w.game.froze).toBe(1);
+  });
+
+  it('the AI goalie lets go on its own: passes it out or freezes it', () => {
+    const w = shotAtGoalie(1, 30);
+    w.humans = [true, false];
+    w.skaters[1].x = CX; w.skaters[1].y = 60;
+    run(w, TUNING.goalieHoldMin + TUNING.goalieHoldAi + 0.3);
+    expect(w.goalies[1].holding).toBe(false);
+  });
+});
+
 describe('game flow', () => {
   it('plays three periods, then overtime, then ends tied', () => {
     const w = createWorld(1, { perTeam: 1 });
@@ -574,15 +655,15 @@ describe('AI and control', () => {
 
   it('off-puck teammates spread out: less bunching with spacing on than off', () => {
     // Mean distance from each skater to its nearest teammate, sampled over a long AI-vs-AI game.
-    // Averaged over a few seeds: a single game's trajectory is chaotic and the margin is small.
+    // Averaged over several seeds: a single game's trajectory is chaotic and the margin is small.
     const meanGap = (): number => {
       let sum = 0;
       let n = 0;
-      for (const seed of [1, 2, 3]) {
+      for (const seed of [1, 2, 3, 4, 5, 6]) {
         const w = aiWorld(seed);
         for (let i = 0; i < 60 * 60; i++) {
           step(w, [idle, idle], DT);
-          if (i % 30) continue;
+          if (i % 30 || w.game.phase !== 'play') continue; // faceoff huddles aren't what spacing governs
           w.skaters.forEach((a, ai) => {
             if (ai === w.puck.carrier) return;
             let best = Infinity;

@@ -1,6 +1,7 @@
 import { defendedNet } from './collide';
 import { clamp } from './mathutil';
 import { GOAL, RINK, TUNING, type Team } from './sim-constants';
+import type { Intent } from './input';
 import type { Goalie, World } from './sim-types';
 
 export function makeGoalie(team: Team): Goalie {
@@ -9,6 +10,7 @@ export function makeGoalie(team: Team): Goalie {
   return {
     team, x: RINK.w / 2, y, vx: 0, vy: 0, watchX: RINK.w / 2, watchY: RINK.h / 2,
     threat: 0, down: 0, diveLeft: 0, diveX: RINK.w / 2,
+    holding: false, holdT: 0, holdFor: 0, cool: 0, passHeld: false, actionHeld: false, pokeHeld: false,
   };
 }
 
@@ -19,9 +21,10 @@ export function goalieRadius(g: Goalie): number {
 /**
  * The goalie is a physical blocker, not a dice roll: it tracks the puck with a
  * lag, stands out to cut the angle, and commits to a butterfly slide when a
- * shot is on target. Saves come out of the collision with the puck.
+ * shot is on target. Saves come out of the collision with the puck; whether it also
+ * freezes the puck is `goalie-hold.ts`.
  */
-export function updateGoalie(world: World, g: Goalie, dt: number): void {
+export function updateGoalie(world: World, g: Goalie, dt: number, steer?: Intent): void {
   const net = defendedNet(g.team);
   const { puck } = world;
   const cx = RINK.w / 2;
@@ -53,7 +56,12 @@ export function updateGoalie(world: World, g: Goalie, dt: number): void {
 
   let wantVx = 0;
   let wantVy = 0;
-  if (g.down > 0) {
+  g.cool = Math.max(0, g.cool - dt);
+  if (g.holding) {
+    // Holding the puck: shuffle around the crease at a walk (a human steers; the AI stands still).
+    wantVx = (steer?.x ?? 0) * TUNING.goalieHoldSpeed;
+    wantVy = (steer?.y ?? 0) * TUNING.goalieHoldSpeed;
+  } else if (g.down > 0) {
     g.down -= dt;
     if (g.diveLeft > 0) {
       g.diveLeft -= dt;
