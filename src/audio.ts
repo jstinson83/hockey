@@ -1,6 +1,7 @@
 import crowdUrl from './assets/crowd-loop.wav?url';
 import whistleUrl from './assets/whistle.wav?url';
 import hornUrl from './assets/horn.mp3?url';
+import organUrl from './assets/organ-charge.mp3?url';
 
 // Background arena crowd. Web Audio rather than <audio loop> so the loop is gapless; the clip
 // itself is pre-crossfaded to loop seamlessly. Browsers block audio until a user gesture, so
@@ -8,6 +9,7 @@ import hornUrl from './assets/horn.mp3?url';
 const LEVEL = 0.35; // crowd bed sits under the action
 const WHISTLE_LEVEL = 0.5;
 const HORN_LEVEL = 0.6;
+const ORGAN_LEVEL = 0.5;
 const MUTE_KEY = 'hockey.muted';
 
 export interface Ambience {
@@ -18,6 +20,8 @@ export interface Ambience {
   whistle(): void;
   /** The scoreboard horn at the end of a period. */
   horn(): void;
+  /** The arena organ's "charge" riff (home goal, a new period). */
+  organ(): void;
 }
 
 export function initAmbience(): Ambience {
@@ -28,6 +32,7 @@ export function initAmbience(): Ambience {
   let gain: GainNode | null = null;
   let whistleBuffer: AudioBuffer | null = null;
   let hornBuffer: AudioBuffer | null = null;
+  let organBuffer: AudioBuffer | null = null;
 
   const apply = () => {
     if (ctx && gain) gain.gain.setTargetAtTime(active && !muted ? LEVEL : 0, ctx.currentTime, 0.15);
@@ -47,6 +52,7 @@ export function initAmbience(): Ambience {
     apply();
     whistleBuffer = await ctx.decodeAudioData(await (await fetch(whistleUrl)).arrayBuffer());
     hornBuffer = await ctx.decodeAudioData(await (await fetch(hornUrl)).arrayBuffer());
+    organBuffer = await ctx.decodeAudioData(await (await fetch(organUrl)).arrayBuffer());
   }
 
   const unlock = () => {
@@ -75,6 +81,7 @@ export function initAmbience(): Ambience {
     },
     whistle() { playOnce(whistleBuffer, WHISTLE_LEVEL); },
     horn() { playOnce(hornBuffer, HORN_LEVEL); },
+    organ() { playOnce(organBuffer, ORGAN_LEVEL); },
     toggleMute() {
       muted = !muted;
       try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch { /* ignore */ }
