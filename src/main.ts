@@ -8,6 +8,7 @@ import { initTuningPanel } from './tuning-panel';
 
 const DT = 1 / 60; // fixed simulation timestep
 const MAX_FRAME = 0.25; // avoid spiral of death after tab switches
+const ORGAN_FACEOFF_CHANCE = 0.5; // share of faceoffs that get the organ riff
 const OPTIONS_BUTTON = 9; // Options / Start in the standard gamepad mapping
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -69,6 +70,7 @@ function pollPauseButton(): void {
 let lastPhase = world.game.phase;
 let lastPeriod = world.game.period;
 let lastRedScore = world.game.score[0];
+let organRecent = false; // the goal riff already played; skip the faceoff roll that follows it
 let last = performance.now();
 let acc = 0;
 
@@ -92,8 +94,11 @@ function frame(now: number): void {
     // Horn when a period runs out (the clock hitting zero advances the period or ends the game).
     const g = world.game;
     if (g.period !== lastPeriod || (g.phase === 'end' && lastPhase !== 'end' && g.clock === 0)) ambience.horn();
-    // The organ plays for red (the home side) scoring, and as play resumes after an intermission.
-    if (g.score[0] > lastRedScore || (lastPhase === 'intermission' && g.phase === 'faceoff')) ambience.organ();
+    // The organ plays for red (the home side) scoring, and on half of the faceoffs (render-side randomness, never the sim's).
+    const redScored = g.score[0] > lastRedScore;
+    if (redScored || (g.phase === 'faceoff' && lastPhase !== 'faceoff' && !organRecent && Math.random() < ORGAN_FACEOFF_CHANCE)) ambience.organ();
+    if (g.phase === 'faceoff' && lastPhase !== 'faceoff') organRecent = false;
+    else if (redScored) organRecent = true;
     lastRedScore = g.score[0];
     lastPhase = g.phase;
     lastPeriod = g.period;
