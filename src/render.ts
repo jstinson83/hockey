@@ -715,14 +715,10 @@ function drawHud(ctx: CanvasRenderingContext2D, world: World): void {
     ctx.font = font(18);
     outlinedText(ctx, `${g.overtime ? 'OVERTIME' : `${periodLabel(world)} PERIOD`} starts in ${Math.ceil(g.timer)}`, cx, cy + 36, '#c8ced6');
   } else if (g.phase === 'faceoff') {
-    ctx.font = font(30);
     const fresh = g.clock === (g.overtime ? GAME.overtimeSeconds : GAME.periodSeconds);
-    outlinedText(ctx, fresh ? `${periodLabel(world)} PERIOD` : g.froze !== null ? 'WHISTLE' : 'FACEOFF', cx, cy, '#f2f4f7');
-    ctx.font = font(16);
-    outlinedText(ctx, 'PASS as the ref drops the puck  (hold a direction to aim it)', cx, cy + 30, '#c8ced6');
-    if (g.froze !== null) {
-      ctx.font = font(18);
-      outlinedText(ctx, `${TEAM_NAMES[g.froze]} GOALIE FREEZES THE PUCK`, cx, cy + 58, '#f2f4f7');
+    if (fresh) {
+      ctx.font = font(30);
+      outlinedText(ctx, `${periodLabel(world)} PERIOD`, cx, cy, '#f2f4f7');
     }
   } else if (g.phase === 'play' && world.goalies.some((gl) => gl.holding && world.humans[gl.team])) {
     ctx.font = font(16);
