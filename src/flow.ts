@@ -11,14 +11,25 @@ export function placeForFaceoff(world: World, spot?: { x: number; y: number }): 
   const sx = spot?.x ?? RINK.w / 2;
   const sy = spot?.y ?? mid;
   const slots = [0, 0];
+  // Centres square off over the dot; wingers stand just outside the circle either side, and the
+  // defence sit back and in from them. Each team lines up on its own side of the dot.
+  const r = FACEOFF.radius;
+  const lineup = [
+    { dx: 0, dy: 4.6 },        // C, just outside pickup reach of the dot
+    { dx: -(r + 3), dy: 5 },   // L
+    { dx: r + 3, dy: 5 },      // R
+    { dx: -(r - 2), dy: 17 },  // LD
+    { dx: r - 2, dy: 17 },     // RD
+  ];
   world.skaters.forEach((s) => {
     const k = slots[s.team]++;
-    const sign = s.team === 0 ? 1 : -1; // red starts below centre, blue above
-    // Slots: C, L, R, LD, RD (see ROLES in sim.ts); defence line up behind the forwards.
-    s.x = sx + (spot ? [0, -12, 12, -9, 9] : [0, -20, 20, -12, 12])[k % 5];
-    s.y = sy + sign * (spot ? [3, 8, 8, 14, 14] : [14, 30, 30, 46, 46])[k % 5];
+    const sign = s.team === 0 ? 1 : -1; // red starts below the dot, blue above
+    const slot = lineup[k % 5];
+    const edge = TUNING.skaterRadius + 2; // an end-zone dot is near the boards: keep wingers on the ice
+    s.x = Math.min(RINK.w - edge, Math.max(edge, sx + slot.dx * (s.team === 0 ? 1 : -1)));
+    s.y = sy + sign * slot.dy;
+    s.facing = Math.atan2(sy - s.y, sx - s.x); // everyone watches the dot
     s.vx = s.vy = 0;
-    s.facing = s.team === 0 ? -Math.PI / 2 : Math.PI / 2;
     s.charge = 0;
     s.actionHeld = false;
     s.passHeld = false;
