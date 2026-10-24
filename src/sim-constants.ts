@@ -132,6 +132,7 @@ export const TUNING = {
   aiTrapLine: 8,        // the trap's wall stands this far on our side of centre ice
   aiTrapGap: 28,        // the trap's wall steps up to stay this far in front of a carrier who is deep in their own end
   aiPressGap: 24,       // under the press, defence stand this far behind the puck carrier
+  aiDefenceStepUp: 8,   // under a trap / press, defence never step up further than this past centre ice (the rest of the wall may)
   aiSpacing: 16,        // off-puck skaters keep their spot this far from teammates
   aiSpacingPush: 0.8,   // fraction of the overlap they are pushed out of
   aiCoverRange: 30,     // defence / centre shade toward an opponent this close to their spot

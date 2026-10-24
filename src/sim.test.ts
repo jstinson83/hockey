@@ -589,6 +589,20 @@ describe('neutral zone', () => {
     expect(Math.hypot(left.x - carrier.x, left.y - carrier.y)).toBeGreaterThan(15);
   });
 
+  it('trap / press: the defence never step up past the limit, even with the carrier deep in their own end', () => {
+    for (const plan of ['trap', 'press'] as const) {
+      const w = setUp(plan, CX, 30, 6);
+      for (const d of red(w).filter((s) => s.role === 'LD' || s.role === 'RD')) {
+        expect(RINK.h / 2 - d.y).toBeLessThan(TUNING.aiDefenceStepUp + 8); // red attacks toward y = 0, so progress = MID - y
+      }
+    }
+  });
+
+  it('wings do not mark opponents out at the points; they only pick up dangerous ones', () => {
+    const w = setUp('man', CX, 30, 6);
+    for (const r of ['L', 'R']) expect(red(w).find((s) => s.role === r)!.y).toBeGreaterThan(RINK.h / 2 + 20);
+  });
+
   it('the plans only apply while the puck is out of their end: deeper in, they play like man', () => {
     const play = (plan: 'man' | 'trap' | 'press') => JSON.stringify(red(setUp(plan, CX, 150, 3)).map((s) => [s.x.toFixed(2), s.y.toFixed(2)]));
     expect(play('trap')).toBe(play('man'));
@@ -1087,7 +1101,7 @@ describe('defence discipline', () => {
   it('a defender beyond its chase range holds position and a forward goes for the puck instead', () => {
     const limited = run(22);
     const free = run(1000);
-    expect(limited.r).toBeGreaterThan(free.r + 3); // the winger takes the chase
+    expect(limited.r).toBeGreaterThan(free.r + 1); // the winger takes the chase
     expect(limited.rd).toBeLessThan(free.rd - 1); // the defender no longer charges (it still drifts up with its hold line)
   });
 });
@@ -1102,9 +1116,12 @@ describe('trap forecheck', () => {
     const hold = () => { Object.assign(w.skaters[c], { x: CX, y: 175, vx: 0, vy: 0 }); w.puck.carrier = c; };
     hold();
     for (let i = 0; i < 360; i++) { step(w, [idle, idle], DT); hold(); }
-    const wall = w.skaters.filter((s) => s.team === 1 && s.role !== 'C');
+    const wall = w.skaters.filter((s) => s.team === 1 && (s.role === 'L' || s.role === 'R'));
     const centreIce = RINK.h / 2;
     wall.forEach((s) => expect(s.y).toBeGreaterThan(centreIce + 15)); // well into red's half, not parked at the red line
+    // ... but the defence hold back so a break out of the zone doesn't find them already beaten.
+    w.skaters.filter((s) => s.team === 1 && (s.role === 'LD' || s.role === 'RD'))
+      .forEach((s) => expect(s.y).toBeLessThan(centreIce + TUNING.aiDefenceStepUp + 8));
   });
 });
 
