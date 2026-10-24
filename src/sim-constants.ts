@@ -115,7 +115,7 @@ export const TUNING = {
   aiShootChance: 0.45,  // per decision (a few per second) once in range with a lane
   aiSlotRange: 38,      // a teammate this close to the net, in front of it, is in the slot
   aiSlotWidth: 22,      // ...and within this of the net's centre line
-  aiSlotOpen: 9,        // an opponent this close takes the slot teammate off for a one-timer
+  aiSlotOpen: 6.5,       // an opponent this close takes the slot teammate off for a one-timer
   aiSlotPassChance: 0.85, // per decision, chance to feed an open slot teammate
   aiOneTimerChance: 0.85, // chance an AI receiver in the slot shoots a pass first time
   aiAimMistake: 0.3,    // chance a shot is aimed at the goalie's side instead of away from it
@@ -130,11 +130,12 @@ export const TUNING = {
   aiCentreGap: 0.75,    // the centre stands this fraction of the way (20..75 units out)
   aiTrapLine: 8,        // the trap's wall stands this far on our side of centre ice
   aiTrapGap: 28,        // the trap's wall steps up to stay this far in front of a carrier who is deep in their own end
+  aiPressDepth: 20,     // the press only sends the centre and wing at a carrier up to this far into their own end; deeper, one forechecker engages
   aiPressGap: 24,       // under the press, defence stand this far behind the puck carrier
   aiSpacing: 16,        // off-puck skaters keep their spot this far from teammates
   aiSpacingPush: 0.8,   // fraction of the overlap they are pushed out of
   aiCoverRange: 30,     // defence / centre shade toward an opponent this close to their spot
-  aiCoverShade: 0.5,    // how far toward that opponent (goal side) they move
+  aiCoverShade: 0.35,   // how far toward that opponent (goal side) they move
   aiCoverDefenceDepth: 40, // an opponent is only marked inside this distance of our net; out at the points they are left open
   aiOpenRange: 14,      // with the puck, support skaters move off opponents this close to their spot
   aiOpenPush: 0.6,      // fraction of the overlap they are pushed out of

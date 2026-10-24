@@ -1239,3 +1239,20 @@ describe('one-timers', () => {
     expect(shot).toBe(true);
   });
 });
+
+describe('press depth', () => {
+  it('a team in the press sends only one forechecker at a carrier deep in their own end', () => {
+    const w = createWorld(7, { perTeam: 5, neutral: ['press', 'press'] });
+    w.humans = [true, false];
+    w.game.phase = 'play';
+    const c = w.controlled[0];
+    w.skaters.forEach((s) => { s.vx = s.vy = 0; });
+    // Red's carrier sits deep in red's end (the bottom); blue's skaters start up-ice.
+    Object.assign(w.skaters[c], { x: CX, y: RINK.h - 40 });
+    w.puck.carrier = c;
+    w.skaters.filter((s) => s.team === 1).forEach((s, k) => { s.x = 20 + k * 30; s.y = RINK.h / 2 - 20; });
+    run(w, 2);
+    const close = w.skaters.filter((s) => s.team === 1 && Math.hypot(s.x - w.skaters[c].x, s.y - w.skaters[c].y) < 25).length;
+    expect(close).toBeLessThanOrEqual(1);
+  });
+});

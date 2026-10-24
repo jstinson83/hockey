@@ -161,6 +161,7 @@ export const TUNING_GROUPS: Group[] = [
       { key: 'aiSpacing', label: 'Teammate spacing', min: 0, max: 30, step: 1, hint: 'units between off-puck teammates' },
       { key: 'aiSpacingPush', label: 'Spacing push', min: 0, max: 1, step: 0.05 },
       { key: 'aiCoverRange', label: 'Cover range', min: 0, max: 60, step: 1, hint: 'defenders shade toward opponents this close' },
+      { key: 'aiPressDepth', label: 'Press depth', min: -20, max: 60, step: 1, hint: 'full press only on a carrier up to this far into their own end' },
       { key: 'aiCoverShade', label: 'Cover shade', min: 0, max: 1, step: 0.05 },
       { key: 'aiCoverDefenceDepth', label: 'Cover opponents within', min: 0, max: 120, step: 1, hint: 'units from our net; beyond it opponents at the points are left open' },
       { key: 'aiOpenRange', label: 'Find-open-ice range', min: 0, max: 30, step: 1 },

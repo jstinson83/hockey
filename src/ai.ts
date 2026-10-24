@@ -266,12 +266,12 @@ function neutralAnchor(world: World, s: Skater, carrier: Point, carrierIdx: numb
   const plan = world.neutral[s.team];
   const cSide = carrier.x < CX ? 'L' : 'R';
   const onCarrier = { x: carrier.x + (carrierIdx >= 0 ? world.skaters[carrierIdx].vx * 0.3 : 0), y: carrier.y + (carrierIdx >= 0 ? world.skaters[carrierIdx].vy * 0.3 : 0) };
-  if (plan === 'press') {
+  if (plan === 'press' && progress(s.team, carrier.y) < TUNING.aiPressDepth) {
     if (s.role === 'C' || s.role === cSide) return { target: routeAroundNet(s, onCarrier), press: true };
     if (isDefence(s.role)) return { target: keepIn(CX + sideOf(s.role) * 14, carrier.y - fwd * TUNING.aiPressGap), press: false };
     return { target: keepIn(CX, carrier.y - fwd * 14), press: false };
   }
-  // trap
+  // trap (also the press once the carrier is deep in their own end: one forechecker, the rest hold the wall)
   // The wall holds its line while the carrier is in the neutral zone, then steps up with them as they
   // stay in their own end (a forecheck), so they never sit at centre ice while the play is deep behind it.
   const carrierProgress = progress(s.team, carrier.y);
