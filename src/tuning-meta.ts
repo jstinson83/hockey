@@ -125,6 +125,7 @@ export const TUNING_GROUPS: Group[] = [
       { key: 'aiSpacingPush', label: 'Spacing push', min: 0, max: 1, step: 0.05 },
       { key: 'aiCoverRange', label: 'Cover range', min: 0, max: 60, step: 1, hint: 'defenders shade toward opponents this close' },
       { key: 'aiCoverShade', label: 'Cover shade', min: 0, max: 1, step: 0.05 },
+      { key: 'aiCoverDefenceDepth', label: 'Cover opposing D within', min: 0, max: 120, step: 1, hint: 'units from our net; beyond it their defence at the points are left open' },
       { key: 'aiOpenRange', label: 'Find-open-ice range', min: 0, max: 30, step: 1 },
       { key: 'aiOpenPush', label: 'Open-ice push', min: 0, max: 1, step: 0.05 },
       { key: 'aiWeave', label: 'Idle drift', min: 0, max: 10, step: 0.5, hint: 'units' },

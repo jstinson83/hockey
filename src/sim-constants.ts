@@ -101,6 +101,7 @@ export const TUNING = {
   aiSpacingPush: 0.8,   // fraction of the overlap they are pushed out of
   aiCoverRange: 30,     // defence / centre shade toward an opponent this close to their spot
   aiCoverShade: 0.5,    // how far toward that opponent (goal side) they move
+  aiCoverDefenceDepth: 45, // an opposing defenceman is only marked inside this distance of our net; out at the points they are left open
   aiOpenRange: 14,      // with the puck, support skaters move off opponents this close to their spot
   aiOpenPush: 0.6,      // fraction of the overlap they are pushed out of
   aiWeave: 3,           // radius of the idle drift (units)

@@ -574,19 +574,22 @@ describe('AI and control', () => {
 
   it('off-puck teammates spread out: less bunching with spacing on than off', () => {
     // Mean distance from each skater to its nearest teammate, sampled over a long AI-vs-AI game.
+    // Averaged over a few seeds: a single game's trajectory is chaotic and the margin is small.
     const meanGap = (): number => {
-      const w = aiWorld(5);
       let sum = 0;
       let n = 0;
-      for (let i = 0; i < 60 * 60; i++) {
-        step(w, [idle, idle], DT);
-        if (i % 30) continue;
-        w.skaters.forEach((a, ai) => {
-          if (ai === w.puck.carrier) return;
-          let best = Infinity;
-          w.skaters.forEach((b, bi) => { if (bi !== ai && b.team === a.team) best = Math.min(best, Math.hypot(a.x - b.x, a.y - b.y)); });
-          sum += best; n++;
-        });
+      for (const seed of [1, 2, 3]) {
+        const w = aiWorld(seed);
+        for (let i = 0; i < 60 * 60; i++) {
+          step(w, [idle, idle], DT);
+          if (i % 30) continue;
+          w.skaters.forEach((a, ai) => {
+            if (ai === w.puck.carrier) return;
+            let best = Infinity;
+            w.skaters.forEach((b, bi) => { if (bi !== ai && b.team === a.team) best = Math.min(best, Math.hypot(a.x - b.x, a.y - b.y)); });
+            sum += best; n++;
+          });
+        }
       }
       return sum / n;
     };
@@ -615,6 +618,26 @@ describe('AI and control', () => {
     const covered = reactToPlayers(w, i, anchor, false, -1, true);
     expect(covered.x).toBeLessThan(plain.x - 3);  // slid toward the opponent
     expect(covered.y).toBeGreaterThan(plain.y);   // and toward our own net
+  });
+
+  it('a defender leaves an opposing defenceman at the points unmarked', () => {
+    const w = aiWorld(4);
+    w.skaters.forEach((s) => { s.x = CX; s.y = RINK.h / 2; s.vx = s.vy = 0; });
+    const red = w.skaters.find((s) => s.team === 0 && s.role === 'C')!;
+    const point = w.skaters.find((s) => s.team === 1 && s.role === 'LD')!;
+    w.skaters.forEach((s) => { if (s !== point && s !== red) s.y = 0; }); // everyone else well out of cover range
+    point.x = CX - 30; point.y = RINK.h - 130; // red defends the bottom net; this is well out at the point
+    const anchor = { x: CX + 6, y: RINK.h - 128 };
+    const i = w.skaters.indexOf(red);
+    const saved = { w: TUNING.aiWeave, c: TUNING.aiCoverShade };
+    onTestFinished(() => { TUNING.aiWeave = saved.w; TUNING.aiCoverShade = saved.c; });
+    TUNING.aiWeave = 0;
+    TUNING.aiCoverShade = 0;
+    const plain = reactToPlayers(w, i, anchor, false, -1, true);
+    TUNING.aiCoverShade = 0.8;
+    const covered = reactToPlayers(w, i, anchor, false, -1, true);
+    expect(covered.x).toBeCloseTo(plain.x, 5);
+    expect(covered.y).toBeCloseTo(plain.y, 5);
   });
 
   it('is deterministic per seed', () => {
