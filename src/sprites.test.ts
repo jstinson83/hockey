@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Intent } from './input';
 import { createWorld, step, type World } from './sim';
-import { RINK, TUNING } from './sim-constants';
+import { RINK, TUNING, VIEW } from './sim-constants';
 import { framePose, GOALIE_ANIMS, SKATER_ANIMS } from './sprite-poses';
 import { pickGoalie, pickSkater, type SkaterCtx } from './sprite-select';
 
@@ -74,7 +74,7 @@ describe('animation picking', () => {
   it('skating advances the stride frame with distance, not time', () => {
     s.vx = 20;
     const a = pickSkater(s, { ...ctx, dist: 0 });
-    const b = pickSkater(s, { ...ctx, dist: 3 });
+    const b = pickSkater(s, { ...ctx, dist: VIEW.strideUnits / 2 });
     expect(a.anim).toBe('skate');
     expect(b.frame).not.toBe(a.frame);
     s.vx = 0;
