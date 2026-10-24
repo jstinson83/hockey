@@ -11,9 +11,8 @@ const OPTIONS_BUTTON = 9; // Options / Start in the standard gamepad mapping
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const ctx = setupCanvas(canvas);
-const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(Math.random() * xs.length)];
-// Random seed (shot spread differs each game) and a random breakout and neutral-zone plan per team, for trying them out.
-const newWorld = () => createWorld((Math.random() * 2 ** 31) | 0, { breakout: [pick(BREAKOUTS), pick(BREAKOUTS)], neutral: [pick(NEUTRALS), pick(NEUTRALS)], offence: [pick(OFFENCES), pick(OFFENCES)] });
+// Random seed (shot spread differs each game); both teams default to a cycling offence, swing breakout and pressing neutral zone (changeable from the pause menu).
+const newWorld = () => createWorld((Math.random() * 2 ** 31) | 0, { breakout: ['swing', 'swing'], neutral: ['press', 'press'], offence: ['cycle', 'cycle'] });
 let world = newWorld();
 let camera = createCamera(world);
 const tuning = initTuningPanel(document.getElementById('tuning')!);
