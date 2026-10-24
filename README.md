@@ -15,7 +15,7 @@ PS5 pad: X = shoot, Square = pass, and without the puck Square switches player. 
 slapshot (aim assist pulls shots toward the net; spread keeps them from being automatic).
 Without the puck, tapping shoot is a speed burst (stacks to a cap) and opens a short
 bodycheck window. P / Esc / the Options button pauses (it also pauses when the tab loses
-focus). R resets, F toggles fullscreen. Each game starts both teams on the cycle offence, swing breakout and press neutral zone (shown above the scoreboard; change them from the pause menu or the keys below);
+focus). R resets, F toggles fullscreen, S mutes the crowd noise. Each game starts both teams on the cycle offence, swing breakout and press neutral zone (shown above the scoreboard; change them from the pause menu or the keys below);
 B / N cycle red's / blue's breakout (carry, boards, swing, stretch), V / M their neutral-zone defence (man, trap, press),
 O / L their offensive-zone play (set, shoot, cycle, overload).
 Browsers only report a gamepad after a button press on it.
@@ -36,6 +36,7 @@ Browsers only report a gamepad after a button press on it.
 - `src/tuning-panel.ts` / `tuning-meta.ts` / `tuning-store.ts` - the live tuning overlay (`T`): a slider per
   `TUNING` value, saved in the browser, with "Copy changes" to export what differs from the code's defaults.
   Add a new `TUNING` value to `tuning-meta.ts` too (a test fails if one is missing).
+- `src/audio.ts` - looping crowd ambience (`assets/crowd-loop.wav`, pre-crossfaded to loop seamlessly); starts on the first key press or click (browser autoplay rules), fades out while paused.
 - `src/strategy-menu.ts` - the pause-screen dropdowns for each team's breakout / neutral-zone / offensive-zone plan
   (same fields the B/N, V/M, O/L keys cycle).
 - `src/sim-constants.ts` - rink dimensions and every feel-related `TUNING` value.

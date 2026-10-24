@@ -1,3 +1,4 @@
+import { initAmbience } from './audio';
 import { isTextEntry, P1_KEYS, readIntent } from './input';
 import { createCamera, updateCamera } from './camera';
 import { drawPause, render, setupCanvas } from './render';
@@ -17,6 +18,7 @@ let world = newWorld();
 let camera = createCamera(world);
 const tuning = initTuningPanel(document.getElementById('tuning')!);
 const strategies = initStrategyMenu(document.getElementById('strategies')!, () => world);
+const ambience = initAmbience();
 let paused = false;
 let menuShown = false;
 let demo = false; // AI plays both teams; handy for watching without a controller
@@ -30,6 +32,7 @@ addEventListener('keydown', (e) => {
   }
   if (e.code === 'KeyP' || (e.code === 'Escape' && !e.repeat)) paused = !paused;
   if (e.code === 'KeyD') demo = !demo;
+  if (e.code === 'KeyS' && !e.repeat) ambience.toggleMute();
   // B / N cycle red's / blue's breakout plan (a reset rerolls them).
   if (e.code === 'KeyB' || e.code === 'KeyN') {
     const team = e.code === 'KeyB' ? 0 : 1;
@@ -70,6 +73,7 @@ function frame(now: number): void {
   const frameDt = Math.min((now - last) / 1000, MAX_FRAME);
   last = now;
   pollPauseButton();
+  ambience.setActive(!paused);
 
   if (!paused && !tuning.pausesGame()) {
     acc += frameDt;
