@@ -134,6 +134,7 @@ function shoot(world: World, i: number): void {
   const angle = shotAngle(world, s, t);
   const p = world.puck;
   p.carrier = -1;
+  p.passTime = 0;
   p.vx = Math.cos(angle) * power + s.vx * 0.5;
   p.vy = Math.sin(angle) * power + s.vy * 0.5;
   s.lockout = TUNING.shooterLockout;
@@ -169,6 +170,8 @@ function passPuck(world: World, i: number): void {
   }
   const p = world.puck;
   p.carrier = -1;
+  p.passTeam = s.team;
+  p.passTime = TUNING.passProtectTime;
   p.vx = Math.cos(angle) * TUNING.passSpeed + s.vx * 0.5;
   p.vy = Math.sin(angle) * TUNING.passSpeed + s.vy * 0.5;
   s.lockout = TUNING.shooterLockout;

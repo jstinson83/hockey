@@ -81,6 +81,9 @@ export function updatePuck(world: World, dt: number): void {
 
   if (world.game.phase !== 'play') return;
 
+  // A pass is protected for a moment: opponents reach for it with a shorter stick, so the receiver
+  // usually gets there first unless a defender is squarely in the lane.
+  if (puck.passTime > 0) puck.passTime = Math.max(0, puck.passTime - dt);
   // Pickup: nearest eligible skater wins.
   const speed = Math.hypot(puck.vx, puck.vy);
   if (speed > TUNING.pickupSpeed) return;
@@ -89,10 +92,12 @@ export function updatePuck(world: World, dt: number): void {
   skaters.forEach((s, i) => {
     if (s.lockout > 0) return;
     const d = Math.hypot(s.x - puck.x, s.y - puck.y);
-    if (d < bestDist) { best = i; bestDist = d; }
+    const reach = puck.passTime > 0 && s.team !== puck.passTeam ? TUNING.pickupRadius * TUNING.passInterceptReach : TUNING.pickupRadius;
+    if (d < reach && d < bestDist) { best = i; bestDist = d; }
   });
   if (best >= 0) {
     puck.carrier = best;
+    puck.passTime = 0;
     skaters[best].charge = 0;
   }
 }
@@ -106,6 +111,7 @@ export function knockLoose(world: World, hitter: number): void {
   const dy = victim.y - h.y;
   const d = Math.hypot(dx, dy) || 1;
   puck.carrier = -1;
+  puck.passTime = 0;
   puck.vx = victim.vx + (dx / d) * 25;
   puck.vy = victim.vy + (dy / d) * 25;
   victim.lockout = 0.4;

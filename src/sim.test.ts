@@ -688,8 +688,8 @@ describe('AI and control', () => {
     w.skaters.forEach((s) => { s.x = CX; s.y = RINK.h / 2; s.vx = s.vy = 0; });
     const red = w.skaters.find((s) => s.team === 0 && s.role === 'C')!;
     const threat = w.skaters.find((s) => s.team === 1 && s.role === 'L')!;
-    threat.x = CX - 12; threat.y = RINK.h - 60; // red defends the bottom net
-    const anchor = { x: CX + 6, y: RINK.h - 58 };
+    threat.x = CX - 12; threat.y = RINK.h - 40; // red defends the bottom net
+    const anchor = { x: CX + 6, y: RINK.h - 38 };
     const i = w.skaters.indexOf(red);
     const saved = { w: TUNING.aiWeave, c: TUNING.aiCoverShade };
     onTestFinished(() => { TUNING.aiWeave = saved.w; TUNING.aiCoverShade = saved.c; });
@@ -722,6 +722,26 @@ describe('AI and control', () => {
     expect(covered.y).toBeCloseTo(plain.y, 5);
   });
 
+  it('a defender also leaves an opposing forward out at the point unmarked', () => {
+    const w = aiWorld(4);
+    w.skaters.forEach((s) => { s.x = CX; s.y = RINK.h / 2; s.vx = s.vy = 0; });
+    const red = w.skaters.find((s) => s.team === 0 && s.role === 'C')!;
+    const point = w.skaters.find((s) => s.team === 1 && s.role === 'R')!;
+    w.skaters.forEach((s) => { if (s !== point && s !== red) s.y = 0; });
+    point.x = CX + 30; point.y = RINK.h - 130;
+    const anchor = { x: CX + 6, y: RINK.h - 128 };
+    const i = w.skaters.indexOf(red);
+    const saved = { w: TUNING.aiWeave, c: TUNING.aiCoverShade };
+    onTestFinished(() => { TUNING.aiWeave = saved.w; TUNING.aiCoverShade = saved.c; });
+    TUNING.aiWeave = 0;
+    TUNING.aiCoverShade = 0;
+    const plain = reactToPlayers(w, i, anchor, false, -1, true);
+    TUNING.aiCoverShade = 0.8;
+    const covered = reactToPlayers(w, i, anchor, false, -1, true);
+    expect(covered.x).toBeCloseTo(plain.x, 5);
+    expect(covered.y).toBeCloseTo(plain.y, 5);
+  });
+
   it('is deterministic per seed', () => {
     const play = (seed: number): string => {
       const w = aiWorld(seed);
@@ -730,6 +750,23 @@ describe('AI and control', () => {
     };
     expect(play(7)).toBe(play(7));
     expect(play(7)).not.toBe(play(8));
+  });
+
+  it('a pass in flight is harder for an opponent to pick off, until the protection runs out', () => {
+    const attempt = (passTeam: -1 | 0 | 1, passTime: number): number => {
+      const w = liveWorld();
+      const [red, blue] = w.skaters;
+      red.x = 10; blue.x = CX; blue.y = RINK.h / 2; blue.vx = blue.vy = 0;
+      w.puck.carrier = -1;
+      w.puck.x = CX + TUNING.pickupRadius * 0.8; w.puck.y = RINK.h / 2; // inside normal reach, outside the reduced one
+      w.puck.vx = w.puck.vy = 0;
+      w.puck.passTeam = passTeam; w.puck.passTime = passTime;
+      step(w, [idle, idle], DT);
+      return w.puck.carrier;
+    };
+    expect(attempt(0, 1)).toBe(-1);                       // red's pass: blue can't reach it yet
+    expect(attempt(0, 0)).toBeGreaterThanOrEqual(0);      // protection expired: normal pickup
+    expect(attempt(1, 1)).toBeGreaterThanOrEqual(0);      // blue's own pass: no handicap
   });
 
   it('the nearest skater goes for a loose puck and picks it up', () => {
