@@ -63,7 +63,8 @@ export const TUNING = {
   passLead: 0.25,     // s of teammate velocity to lead
 
   // Faceoffs: count-in, then the ref holds the puck a random moment and drops it; pass in the window after the drop wins the draw
-  faceoffCount: 2,       // s of count-in (3-2-1 style) before the ref's hold
+  faceoffCount: 2.6,     // s of count-in before the ref's hold
+  faceoffTick: 1.3,      // s each number of the count-in stays up
   faceoffHoldMin: 0.3,   // s the ref holds the puck after the count, at least
   faceoffHoldMax: 0.9,   // ... and at most (random, so the drop can't be counted)
   faceoffWindow: 0.35,   // s after the drop in which a press wins; before the drop it's a false start

@@ -819,7 +819,7 @@ function drawFaceoffHud(ctx: CanvasRenderingContext2D, world: World): void {
     outlinedText(ctx, 'DROP!', tx, y + 40, '#ffd24a');
   } else if (f.t < TUNING.faceoffCount) {
     ctx.font = font(44);
-    outlinedText(ctx, String(Math.ceil(TUNING.faceoffCount - f.t)), tx, y + 42, '#f2f4f7');
+    outlinedText(ctx, String(Math.ceil((TUNING.faceoffCount - f.t) / TUNING.faceoffTick)), tx, y + 42, '#f2f4f7');
   } else {
     ctx.font = font(18);
     outlinedText(ctx, 'READY', tx, y + 40, f.t % 0.3 < 0.15 ? '#f2f4f7' : '#9aa3ad');
