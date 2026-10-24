@@ -42,7 +42,7 @@ Browsers only report a gamepad after a button press on it.
 - `src/tuning-panel.ts` / `tuning-meta.ts` / `tuning-store.ts` - the live tuning overlay (`T`): a slider per
   `TUNING` value, saved in the browser, with "Copy changes" to export what differs from the code's defaults.
   Add a new `TUNING` value to `tuning-meta.ts` too (a test fails if one is missing).
-- `src/audio.ts` - whistle on a goalie freeze (`assets/whistle.wav`, cropped to 0.8s) and looping crowd ambience (`assets/crowd-loop.wav`, pre-crossfaded to loop seamlessly); starts on the first key press or click (browser autoplay rules), fades out while paused.
+- `src/audio.ts` - organ riff (`assets/organ-charge.mp3`) on a red goal and when play resumes after an intermission; whistle on a goalie freeze (`assets/whistle.wav`, cropped to 0.8s) and looping crowd ambience (`assets/crowd-loop.wav`, pre-crossfaded to loop seamlessly); starts on the first key press or click (browser autoplay rules), fades out while paused.
 - `src/strategy-menu.ts` - the pause-screen dropdowns for each team's breakout / neutral-zone / offensive-zone plan
   (same fields the B/N, V/M, O/L keys cycle).
 - `src/sim-constants.ts` - rink dimensions and every feel-related `TUNING` value.

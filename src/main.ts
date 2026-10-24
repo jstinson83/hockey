@@ -68,6 +68,7 @@ function pollPauseButton(): void {
 
 let lastPhase = world.game.phase;
 let lastPeriod = world.game.period;
+let lastRedScore = world.game.score[0];
 let last = performance.now();
 let acc = 0;
 
@@ -91,6 +92,9 @@ function frame(now: number): void {
     // Horn when a period runs out (the clock hitting zero advances the period or ends the game).
     const g = world.game;
     if (g.period !== lastPeriod || (g.phase === 'end' && lastPhase !== 'end' && g.clock === 0)) ambience.horn();
+    // The organ plays for red (the home side) scoring, and as play resumes after an intermission.
+    if (g.score[0] > lastRedScore || (lastPhase === 'intermission' && g.phase === 'faceoff')) ambience.organ();
+    lastRedScore = g.score[0];
     lastPhase = g.phase;
     lastPeriod = g.period;
     updateCamera(camera, world, frameDt);
