@@ -1,11 +1,13 @@
 import crowdUrl from './assets/crowd-loop.wav?url';
 import whistleUrl from './assets/whistle.wav?url';
+import hornUrl from './assets/horn.mp3?url';
 
 // Background arena crowd. Web Audio rather than <audio loop> so the loop is gapless; the clip
 // itself is pre-crossfaded to loop seamlessly. Browsers block audio until a user gesture, so
 // nothing is created until the first key press or click.
 const LEVEL = 0.35; // crowd bed sits under the action
 const WHISTLE_LEVEL = 0.5;
+const HORN_LEVEL = 0.6;
 const MUTE_KEY = 'hockey.muted';
 
 export interface Ambience {
@@ -14,6 +16,8 @@ export interface Ambience {
   toggleMute(): void;
   /** The referee's whistle (a goalie froze the puck). */
   whistle(): void;
+  /** The scoreboard horn at the end of a period. */
+  horn(): void;
 }
 
 export function initAmbience(): Ambience {
@@ -23,6 +27,7 @@ export function initAmbience(): Ambience {
   let ctx: AudioContext | null = null;
   let gain: GainNode | null = null;
   let whistleBuffer: AudioBuffer | null = null;
+  let hornBuffer: AudioBuffer | null = null;
 
   const apply = () => {
     if (ctx && gain) gain.gain.setTargetAtTime(active && !muted ? LEVEL : 0, ctx.currentTime, 0.15);
@@ -41,6 +46,7 @@ export function initAmbience(): Ambience {
     src.start();
     apply();
     whistleBuffer = await ctx.decodeAudioData(await (await fetch(whistleUrl)).arrayBuffer());
+    hornBuffer = await ctx.decodeAudioData(await (await fetch(hornUrl)).arrayBuffer());
   }
 
   const unlock = () => {
@@ -51,21 +57,24 @@ export function initAmbience(): Ambience {
   addEventListener('keydown', unlock);
   addEventListener('pointerdown', unlock);
 
+  const playOnce = (buffer: AudioBuffer | null, level: number) => {
+    if (!ctx || !buffer || muted || !active) return;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = level;
+    src.connect(gainNode).connect(ctx.destination);
+    src.start();
+  };
+
   return {
     setActive(a) {
       if (a === active) return;
       active = a;
       apply();
     },
-    whistle() {
-      if (!ctx || !whistleBuffer || muted || !active) return;
-      const src = ctx.createBufferSource();
-      src.buffer = whistleBuffer;
-      const level = ctx.createGain();
-      level.gain.value = WHISTLE_LEVEL;
-      src.connect(level).connect(ctx.destination);
-      src.start();
-    },
+    whistle() { playOnce(whistleBuffer, WHISTLE_LEVEL); },
+    horn() { playOnce(hornBuffer, HORN_LEVEL); },
     toggleMute() {
       muted = !muted;
       try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch { /* ignore */ }

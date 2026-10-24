@@ -67,6 +67,7 @@ function pollPauseButton(): void {
 }
 
 let lastPhase = world.game.phase;
+let lastPeriod = world.game.period;
 let last = performance.now();
 let acc = 0;
 
@@ -87,7 +88,11 @@ function frame(now: number): void {
     }
     // A stoppage caused by a goalie freezing the puck gets the whistle.
     if (world.game.phase === 'faceoff' && lastPhase === 'play' && world.game.froze !== null) ambience.whistle();
-    lastPhase = world.game.phase;
+    // Horn when a period runs out (the clock hitting zero advances the period or ends the game).
+    const g = world.game;
+    if (g.period !== lastPeriod || (g.phase === 'end' && lastPhase !== 'end' && g.clock === 0)) ambience.horn();
+    lastPhase = g.phase;
+    lastPeriod = g.period;
     updateCamera(camera, world, frameDt);
   }
 
