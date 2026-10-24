@@ -53,9 +53,23 @@ export interface Puck {
 
 export type Phase = 'faceoff' | 'play' | 'goal' | 'end';
 
+/** The draw at a faceoff: a count-in, the ref's drop, and a short window to time the pass button. */
+export interface Faceoff {
+  t: number;                               // s since the faceoff began
+  dropAt: number;                          // s when the puck is dropped
+  pressAt: [number | null, number | null]; // s each side's valid press (after the drop), if any
+  early: [boolean, boolean];               // jumped the drop: forfeits the draw
+  dir: [{ x: number; y: number }, { x: number; y: number }]; // stick direction held at the press
+  held: [boolean, boolean];                // previous frame's pass button, for press detection
+  aiAt: [number, number];                  // s after the drop an AI side reacts
+  result: { winner: Team | null; clean: boolean } | null; // set when the puck is dropped
+  since: number;                           // s since `result` was set (for the on-screen verdict)
+}
+
 export interface Game {
   phase: Phase;
-  timer: number;      // s left in a faceoff or goal pause
+  timer: number;      // s left in a goal pause
+  faceoff: Faceoff;   // the current (or last) draw
   period: number;     // 1-based; the overtime period is periods + 1
   overtime: boolean;
   clock: number;      // s left in the period

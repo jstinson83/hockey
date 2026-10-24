@@ -1,4 +1,5 @@
 import type { Camera } from './camera';
+import { faceoffEnd } from './faceoff';
 import { FACEOFF, GAME, GOAL, RINK, TEAM_COLORS, TEAM_NAMES, TUNING, VIEW } from './sim-constants';
 import { goalieRadius, type Goalie, type Skater, type World } from './sim';
 import { dirOf, getSprite } from './sprite-rig';
@@ -710,6 +711,8 @@ function drawHud(ctx: CanvasRenderingContext2D, world: World): void {
   ctx.fillText(`OFFENCE ${world.offence[1].toUpperCase()}`, mid + 32, by - 32);
   ctx.textAlign = 'center';
 
+  drawFaceoffHud(ctx, world);
+
   const cx = VIEW.width / 2;
   const cy = VIEW.height / 2 - 40;
   if (g.phase === 'goal' && g.lastScorer !== null) {
@@ -721,9 +724,11 @@ function drawHud(ctx: CanvasRenderingContext2D, world: World): void {
     ctx.font = font(30);
     const fresh = g.clock === (g.overtime ? GAME.overtimeSeconds : GAME.periodSeconds);
     outlinedText(ctx, fresh ? `${periodLabel(world)} PERIOD` : g.froze !== null ? 'WHISTLE' : 'FACEOFF', cx, cy, '#f2f4f7');
+    ctx.font = font(16);
+    outlinedText(ctx, 'PASS as the ref drops the puck  (hold a direction to aim it)', cx, cy + 30, '#c8ced6');
     if (g.froze !== null) {
       ctx.font = font(18);
-      outlinedText(ctx, `${TEAM_NAMES[g.froze]} GOALIE FREEZES THE PUCK`, cx, cy + 34, '#f2f4f7');
+      outlinedText(ctx, `${TEAM_NAMES[g.froze]} GOALIE FREEZES THE PUCK`, cx, cy + 58, '#f2f4f7');
     }
   } else if (g.phase === 'play' && world.goalies.some((gl) => gl.holding && world.humans[gl.team])) {
     ctx.font = font(16);
@@ -742,6 +747,104 @@ function drawHud(ctx: CanvasRenderingContext2D, world: World): void {
   }
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
+}
+
+/** Top right: the ref with the puck, a count-in, then the drop and the window to press pass. */
+function drawFaceoffHud(ctx: CanvasRenderingContext2D, world: World): void {
+  const g = world.game;
+  const f = g.faceoff;
+  const showVerdict = g.phase === 'play' && f.result !== null && f.since < 1.4;
+  if (g.phase !== 'faceoff' && !showVerdict) return;
+  const font = (px: number) => `800 ${px}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+  const w = 168;
+  const h = 118;
+  const x = VIEW.width - w - 10;
+  const y = 10;
+  ctx.fillStyle = 'rgba(15,18,24,0.85)';
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 9);
+  ctx.fill();
+
+  const dropped = f.t >= f.dropAt;
+  const sinceDrop = Math.max(0, f.t - f.dropAt);
+  // The ref: striped shirt, head, and the arm that holds the puck out, then lets it go.
+  const rx = x + 34;
+  const ry = y + 44;
+  ctx.fillStyle = '#e9d2b0';
+  ctx.beginPath();
+  ctx.arc(rx, ry - 20, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#15171c';
+  ctx.fillRect(rx - 9, ry - 29, 18, 5); // cap
+  ctx.fillStyle = '#f2f4f7';
+  ctx.fillRect(rx - 11, ry - 11, 22, 30); // shirt
+  ctx.fillStyle = '#15171c';
+  for (let i = 0; i < 5; i++) ctx.fillRect(rx - 11, ry - 9 + i * 6, 22, 3);
+  ctx.fillRect(rx - 9, ry + 19, 7, 14); // legs
+  ctx.fillRect(rx + 2, ry + 19, 7, 14);
+  const lowered = dropped || f.result !== null;
+  const hx = rx + 34;
+  const hy = lowered ? ry + 4 : ry - 6;
+  ctx.strokeStyle = '#f2f4f7';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(rx + 8, ry - 6);
+  ctx.lineTo(hx, hy);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+  // The puck stays in the hand, then falls to the ice.
+  const fall = dropped ? Math.min(1, sinceDrop / 0.18) : 0;
+  const py = hy + 6 + fall * (ry + 34 - hy - 6);
+  ctx.fillStyle = '#0b0c0f';
+  ctx.beginPath();
+  ctx.ellipse(hx, py, 5, 2.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#6b7380';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const tx = x + w - 44;
+  if (f.result) {
+    const r = f.result;
+    ctx.font = font(15);
+    const label = r.winner === null ? 'SCRAMBLE' : `${TEAM_NAMES[r.winner]} WINS`;
+    outlinedText(ctx, label, tx, y + 36, r.winner === null ? '#f2f4f7' : TEAM_COLORS[r.winner]);
+    ctx.font = font(12);
+    if (r.winner !== null) outlinedText(ctx, r.clean ? 'CLEAN' : 'SLOPPY', tx, y + 56, r.clean ? '#7be07b' : '#f0b050');
+  } else if (dropped) {
+    ctx.font = font(24);
+    outlinedText(ctx, 'DROP!', tx, y + 40, '#ffd24a');
+  } else if (f.t < TUNING.faceoffCount) {
+    ctx.font = font(44);
+    outlinedText(ctx, String(Math.ceil(TUNING.faceoffCount - f.t)), tx, y + 42, '#f2f4f7');
+  } else {
+    ctx.font = font(18);
+    outlinedText(ctx, 'READY', tx, y + 40, f.t % 0.3 < 0.15 ? '#f2f4f7' : '#9aa3ad');
+  }
+
+  // Bottom strip: the press window drains after the drop; a jumped drop is called out for each side.
+  const bx = x + 12;
+  const bw2 = w - 24;
+  const by = y + h - 28;
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(bx, by, bw2, 8);
+  if (dropped && !f.result) {
+    const left = 1 - sinceDrop / (faceoffEnd(f) - f.dropAt);
+    ctx.fillStyle = '#ffd24a';
+    ctx.fillRect(bx, by, bw2 * Math.max(0, left), 8);
+  }
+  ctx.font = font(10);
+  ctx.textBaseline = 'middle';
+  ([0, 1] as const).forEach((t) => {
+    ctx.textAlign = t === 0 ? 'left' : 'right';
+    const text = f.early[t] ? 'JUMPED IT' : f.pressAt[t] !== null ? 'GOT IT' : '';
+    ctx.fillStyle = TEAM_COLORS[t];
+    ctx.fillText(text, t === 0 ? bx : bx + bw2, by + 17);
+  });
+  ctx.textAlign = 'center';
 }
 
 /** Dim the frozen game and show the pause menu. */

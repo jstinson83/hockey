@@ -30,6 +30,8 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
 - Nets, goals, physical goalies (reaction delay, butterfly dive), scoreboard,
   game flow (faceoff -> play -> goal -> faceoff, 3x2:00 periods, sudden-death
   overtime, final).
+- Faceoffs are a timing minigame (`faceoff.ts`, `Game.faceoff`): count-in, random ref hold, drop; pass in the window after the drop wins (early = forfeit),
+  stick direction aims the puck, win quality falls with lateness. Pass is the faceoff button, so it doesn't switch players during the draw. HUD indicator is top right.
 - Goalie holds: a puck reaching the goalie sticks with a chance that falls with its speed (`goalieCatch*`); the goalie is then steerable
   (human: pass / clear / freeze; AI: pass or freeze after a moment). A freeze or a hold past `goalieHoldMax` whistles an end-zone faceoff.
 - Skater AI: 5v5 teams, roles (C/L/R/LD/RD), carrier decisions, switching.

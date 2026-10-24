@@ -20,7 +20,7 @@ export function updateControlled(world: World, human: Intent[], dt: number): voi
     const pressed = !!human[team]?.pass;
     const edge = pressed && !world.switchHeld[team];
     world.switchHeld[team] = pressed;
-    if (!world.humans[team]) continue;
+    if (!world.humans[team] || world.game.phase === 'faceoff') continue; // pass is the faceoff button
     const cur = world.controlled[team];
 
     // A teammate has the puck: they're yours now.

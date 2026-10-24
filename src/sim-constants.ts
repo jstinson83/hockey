@@ -7,7 +7,7 @@ export const GOAL = { line: 12, width: 14, depth: 5, height: 4, crease: 12 };
 export type Team = 0 | 1;
 
 /** Game flow. Team 0 (red, P1) defends the bottom net and attacks the top; team 1 (blue) the reverse. */
-export const GAME = { skatersPerTeam: 5, periods: 3, periodSeconds: 120, overtimeSeconds: 120, faceoffSeconds: 1.5, goalSeconds: 2.5 };
+export const GAME = { skatersPerTeam: 5, periods: 3, periodSeconds: 120, overtimeSeconds: 120, goalSeconds: 2.5 };
 export const TEAM_COLORS = ['#d33', '#36c'] as const;
 export const TEAM_NAMES = ['RED', 'BLUE'] as const;
 
@@ -59,6 +59,19 @@ export const TUNING = {
   passSpeed: 55,
   passCone: 0.6,      // rad: a teammate this close to where you face is the target
   passLead: 0.25,     // s of teammate velocity to lead
+
+  // Faceoffs: count-in, then the ref holds the puck a random moment and drops it; pass in the window after the drop wins the draw
+  faceoffCount: 2,       // s of count-in (3-2-1 style) before the ref's hold
+  faceoffHoldMin: 0.3,   // s the ref holds the puck after the count, at least
+  faceoffHoldMax: 0.9,   // ... and at most (random, so the drop can't be counted)
+  faceoffWindow: 0.35,   // s after the drop in which a press wins; before the drop it's a false start
+  faceoffAiMin: 0.12,    // s after the drop the AI reacts, at the quickest
+  faceoffAiMax: 0.3,     // ... and the slowest
+  faceoffCleanBest: 0.95, // chance the winner gets the puck where they aimed it, pressing right on the drop
+  faceoffCleanWorst: 0.5, // ... pressing at the end of the window
+  faceoffSpeed: 30,      // speed the puck is pushed out at
+  faceoffMissAngle: 1.2, // rad: how far a sloppy win is off line (up to)
+  faceoffMissSpeed: 0.6, // fraction of speed on a sloppy win or a scramble
 
   // Nets and goalies
   postRadius: 0.6,      // net frame thickness (puck and skaters collide with it)
