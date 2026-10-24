@@ -69,11 +69,22 @@ function pollPauseButton(): void {
 let last = performance.now();
 let acc = 0;
 
+function drawSoundHint(c: CanvasRenderingContext2D): void {
+  c.save();
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.font = '14px sans-serif';
+  c.textAlign = 'left';
+  c.fillStyle = 'rgba(255,255,255,0.7)';
+  c.fillText('Press any key or click for sound', 12, c.canvas.height - 12);
+  c.restore();
+}
+
 function frame(now: number): void {
   const frameDt = Math.min((now - last) / 1000, MAX_FRAME);
   last = now;
   pollPauseButton();
   ambience.setActive(!paused);
+  ambience.poll();
 
   if (!paused && !tuning.pausesGame()) {
     acc += frameDt;
@@ -89,6 +100,7 @@ function frame(now: number): void {
 
   render(ctx, world, camera);
   if (paused) drawPause(ctx);
+  if (!ambience.running) drawSoundHint(ctx);
   if (paused !== menuShown) { menuShown = paused; strategies.show(paused); }
   else if (paused) strategies.sync(); // a key may have cycled a plan
   requestAnimationFrame(frame);

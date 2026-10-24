@@ -10,6 +10,10 @@ export interface Ambience {
   /** True while play is running; the crowd fades out when false (paused). */
   setActive(active: boolean): void;
   toggleMute(): void;
+  /** True once the browser has let audio start; until then the player needs to press a key or click. */
+  readonly running: boolean;
+  /** Called every frame: retries unlocking, since a gamepad press alone may not count as a gesture. */
+  poll(): void;
 }
 
 export function initAmbience(): Ambience {
@@ -23,33 +27,45 @@ export function initAmbience(): Ambience {
     if (ctx && gain) gain.gain.setTargetAtTime(active && !muted ? LEVEL : 0, ctx.currentTime, 0.15);
   };
 
-  async function start(): Promise<void> {
-    ctx = new AudioContext();
-    gain = ctx.createGain();
-    gain.gain.value = 0;
-    gain.connect(ctx.destination);
-    const buffer = await ctx.decodeAudioData(await (await fetch(crowdUrl)).arrayBuffer());
-    const src = ctx.createBufferSource();
+  let loading = false;
+  async function load(): Promise<void> {
+    const c = ctx!;
+    const buffer = await c.decodeAudioData(await (await fetch(crowdUrl)).arrayBuffer());
+    const src = c.createBufferSource();
     src.buffer = buffer;
     src.loop = true;
-    src.connect(gain);
+    src.connect(gain!);
     src.start();
-    apply();
   }
 
+  // Runs on every key press / click / pad press until the context is actually running.
   const unlock = () => {
-    removeEventListener('keydown', unlock);
-    removeEventListener('pointerdown', unlock);
-    start().catch(() => { ctx = null; gain = null; }); // no audio is better than a broken game
+    if (!ctx) {
+      ctx = new AudioContext();
+      gain = ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(ctx.destination);
+    }
+    void ctx.resume().then(() => {
+      if (ctx!.state !== 'running') return;
+      apply();
+      if (loading) return;
+      loading = true;
+      load().catch(() => { loading = false; }); // no audio is better than a broken game
+    }).catch(() => {});
   };
-  addEventListener('keydown', unlock);
-  addEventListener('pointerdown', unlock);
+  for (const ev of ['keydown', 'pointerdown', 'touchend']) addEventListener(ev, unlock);
 
   return {
     setActive(a) {
       if (a === active) return;
       active = a;
       apply();
+    },
+    get running() { return ctx?.state === 'running'; },
+    poll() {
+      if (ctx?.state === 'running') return;
+      if (navigator.getGamepads().some((pad) => pad?.buttons.some((b) => b.pressed))) unlock();
     },
     toggleMute() {
       muted = !muted;
