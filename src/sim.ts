@@ -14,7 +14,7 @@ export { RINK, TUNING, defendedNet, goalieRadius };
 export type { Team };
 export type { Breakout, Neutral };
 export { BREAKOUTS, NEUTRALS, OFFENCES } from './ai';
-export type { Game, Goalie, Phase, Puck, Skater, World } from './sim-types';
+export type { Act, Game, Goalie, Phase, Puck, Skater, World } from './sim-types';
 
 const ROLES: Role[] = ['C', 'L', 'R', 'LD', 'RD'];
 
@@ -22,7 +22,7 @@ function makeSkater(team: Team, slot: number): Skater {
   return {
     x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, facing: 0, team, role: ROLES[slot % ROLES.length], ai: newAi(),
     charge: 0, actionHeld: false, passHeld: false, pressedWithoutPuck: false, lockout: 0,
-    boost: 0, checking: 0, poking: 0, pokeCd: 0, pokeHeld: false, stun: 0, color: TEAM_COLORS[team],
+    boost: 0, checking: 0, poking: 0, pokeCd: 0, pokeHeld: false, stun: 0, act: 'none', actT: 99, color: TEAM_COLORS[team],
   };
 }
 

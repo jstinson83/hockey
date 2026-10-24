@@ -1,6 +1,8 @@
 import type { Camera } from './camera';
 import { FACEOFF, GAME, GOAL, RINK, TEAM_COLORS, TEAM_NAMES, TUNING, VIEW } from './sim-constants';
-import { goalieRadius, type Goalie, type World } from './sim';
+import { goalieRadius, type Goalie, type Skater, type World } from './sim';
+import { dirOf, getSprite } from './sprite-rig';
+import { pickGoalie, pickSkater } from './sprite-select';
 
 const S = VIEW.pxPerUnit;
 const T = VIEW.tilt;
@@ -438,7 +440,7 @@ function drawEntities(ctx: CanvasRenderingContext2D, world: World, cam: Camera):
   type Item = { y: number; draw: () => void };
   const items: Item[] = world.skaters.map((s, i) => ({
     y: s.y,
-    draw: () => drawSkater(ctx, cam, s, world.humans[s.team] && world.controlled[s.team] === i),
+    draw: () => drawSkater(ctx, cam, world, s, world.humans[s.team] && world.controlled[s.team] === i),
   }));
   for (const g of world.goalies) items.push({ y: g.y, draw: () => drawGoalie(ctx, cam, g) });
   items.push({ y: world.puck.y, draw: () => drawPuck(ctx, cam, world.puck) });
@@ -572,41 +574,45 @@ function controlStar(ctx: CanvasRenderingContext2D, sx: number, sy: number): voi
   ctx.stroke();
 }
 
-function drawSkater(ctx: CanvasRenderingContext2D, cam: Camera, s: World['skaters'][number], controlled: boolean): void {
+/** Distance each skater has skated, for stride phase. Presentation state only. */
+const skated = new WeakMap<Skater, { x: number; y: number; dist: number }>();
+
+function skatedDistance(s: Skater): number {
+  const m = skated.get(s);
+  if (!m) {
+    skated.set(s, { x: s.x, y: s.y, dist: 0 });
+    return 0;
+  }
+  const d = Math.hypot(s.x - m.x, s.y - m.y);
+  m.dist += d < 10 ? d : 0; // a teleport (faceoff reset) isn't skating
+  m.x = s.x;
+  m.y = s.y;
+  return m.dist;
+}
+
+function drawSkater(ctx: CanvasRenderingContext2D, cam: Camera, world: World, s: Skater, controlled: boolean): void {
   const r = TUNING.skaterRadius;
   const { sx, sy } = project(cam, s.x, s.y);
   if (controlled) controlStar(ctx, sx, sy);
   shadow(ctx, cam, s.x, s.y, r);
 
-  // Upright body: a rounded box standing on the shadow. Faded while stunned.
-  const w = r * 2 * S * 0.85;
-  const h = VIEW.bodyHeight * S * T + r * S * T;
-  ctx.save();
-  if (s.stun > 0) ctx.globalAlpha = 0.5 + 0.2 * Math.sin(s.stun * 40);
-  ctx.fillStyle = s.color;
-  ctx.beginPath();
-  ctx.roundRect(sx - w / 2, sy - h + r * S * T * 0.5, w, h, w * 0.3);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  ctx.restore();
+  const show = pickSkater(s, {
+    hasPuck: world.puck.carrier >= 0 && world.skaters[world.puck.carrier] === s,
+    phase: world.game.phase,
+    celebrating: world.game.phase === 'goal' && world.game.lastScorer === s.team,
+    dist: skatedDistance(s),
+    clock: performance.now() / 1000,
+  });
+  const spr = getSprite({ kind: 'skater', anim: show.anim, frame: show.frame, dir: dirOf(s.facing), color: s.color, carry: show.carry });
+  ctx.drawImage(spr.img, sx - spr.ax, sy - spr.ay, spr.w, spr.h);
 
-  // Facing tick on the ground, projected so it reads in the tilted view.
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(sx, sy);
-  ctx.lineTo(sx + Math.cos(s.facing) * r * 1.8 * S, sy + Math.sin(s.facing) * r * 1.8 * S * T);
-  ctx.stroke();
-
-  if (s.poking > 0) {
-    const reach = TUNING.pokeReach * (1 - s.poking / 0.18 * 0.4);
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 3;
+  // The sprite has 8 facings but aim is continuous: show the exact facing for the skater you control.
+  if (controlled) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(sx, sy);
-    ctx.lineTo(sx + Math.cos(s.facing) * reach * S, sy + Math.sin(s.facing) * reach * S * T);
+    ctx.lineTo(sx + Math.cos(s.facing) * r * 1.8 * S, sy + Math.sin(s.facing) * r * 1.8 * S * T);
     ctx.stroke();
   }
 
@@ -630,32 +636,15 @@ function drawPuck(ctx: CanvasRenderingContext2D, cam: Camera, p: World['puck']):
 
 function drawGoalie(ctx: CanvasRenderingContext2D, cam: Camera, g: Goalie): void {
   const r = goalieRadius(g);
-  const down = g.down > 0;
   const { sx, sy } = project(cam, g.x, g.y);
   shadow(ctx, cam, g.x, g.y, r);
 
-  // Same block language as the skaters, but wider, with white pads; squashed in the butterfly.
-  const w = r * 2 * S * 0.95;
-  const fullH = VIEW.bodyHeight * S * T + r * S * T;
-  const h = down ? fullH * 0.55 : fullH;
-  const top = sy - h + r * S * T * 0.5;
-  ctx.fillStyle = TEAM_COLORS[g.team];
-  ctx.beginPath();
-  ctx.roundRect(sx - w / 2, top, w, h, w * 0.25);
-  ctx.fill();
-  ctx.fillStyle = '#f2f4f7'; // pads
-  ctx.beginPath();
-  ctx.roundRect(sx - w / 2, top + h * 0.6, w, h * 0.4, w * 0.2);
-  ctx.fill();
-  ctx.fillStyle = '#f2f4f7'; // mask
-  ctx.beginPath();
-  ctx.arc(sx, top + h * 0.2, w * 0.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(sx - w / 2, top, w, h, w * 0.25);
-  ctx.stroke();
+  const show = pickGoalie(g, { clock: performance.now() / 1000 });
+  const dir = g.y < RINK.h / 2 ? 2 : 6; // faces up-ice from its own net
+  // Slides are drawn for the sprite's right; which way that is in the world depends on the facing.
+  const side = show.toward * (dir === 2 ? -1 : 1) as 1 | -1;
+  const spr = getSprite({ kind: 'goalie', anim: show.anim, frame: show.frame, dir, color: TEAM_COLORS[g.team], side });
+  ctx.drawImage(spr.img, sx - spr.ax, sy - spr.ay, spr.w, spr.h);
 }
 
 // ---------------------------------------------------------------- HUD

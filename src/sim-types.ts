@@ -1,6 +1,9 @@
 import type { AiState, Breakout, Neutral, Offence, Role } from './ai';
 import type { Team } from './sim-constants';
 
+/** What a skater last did, so the renderer can play the matching one-shot animation. */
+export type Act = 'none' | 'wrist' | 'slap' | 'pass' | 'check';
+
 export interface Skater {
   x: number; y: number;
   vx: number; vy: number;
@@ -19,6 +22,8 @@ export interface Skater {
   pokeCd: number;      // s before another poke is allowed
   pokeHeld: boolean;   // previous frame's poke-button state, for press detection
   stun: number;        // s left of reduced control after being checked
+  act: Act;            // last discrete action, for animation (presentation only)
+  actT: number;        // s since `act` began
   color: string;
 }
 

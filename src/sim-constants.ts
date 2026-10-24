@@ -136,6 +136,7 @@ export const VIEW = {
   boardHeight: 17,    // px the dasher boards rise
   glassHeight: 20,    // px of glass above the boards
   arrowMargin: 20,    // px from the screen edge for off-screen skater arrows
+  strideUnits: 9,     // world units skated per full left+right stride cycle in the sprites
   bodyHeight: 5,      // how tall skaters stand above their shadow, in world units
   followRate: 5,      // camera catch-up speed (higher = snappier)
   lookahead: 0.35,    // seconds of puck velocity the camera leads by

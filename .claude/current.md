@@ -30,7 +30,7 @@ No timeline or order within groups yet.
 - [ ] Shot lab: try shots and the goalie without a full game (testing aid)
 
 ### Look
-- [ ] Skater sprites (not needed yet)
+- [ ] Real player art to replace the placeholder sprites (frame list: `src/sprite-poses.ts`, preview: `sprites.html`)
 - [ ] Corner ramps and player benches
 - [ ] Better crowd
 - [ ] Shading on the side boards

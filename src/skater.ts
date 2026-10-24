@@ -63,6 +63,7 @@ export function moveSkater(s: Skater, intent: Intent | undefined, dt: number): v
   s.poking = Math.max(0, s.poking - dt);
   s.pokeCd = Math.max(0, s.pokeCd - dt);
   s.stun = Math.max(0, s.stun - dt);
+  s.actT += dt;
   s.boost = Math.max(0, s.boost - TUNING.boostDecay * dt);
   if (intent) {
     const accel = TUNING.accel * (s.stun > 0 ? TUNING.stunAccel : 1);
