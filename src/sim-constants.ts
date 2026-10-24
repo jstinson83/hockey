@@ -174,7 +174,8 @@ export const VIEW = {
   glassHeight: 20,    // px of glass above the boards
   arrowMargin: 20,    // px from the screen edge for off-screen skater arrows
   strideUnits: 36,    // world units skated per full left+right stride cycle in the sprites
-  bodyHeight: 5,      // how tall skaters stand above their shadow, in world units
+  animSpeed: 0.75,    // sprite playback rate multiplier (1 = authored fps; strides scale with it too)
+  bodyHeight: 5,     // how tall skaters stand above their shadow, in world units
   followRate: 5,      // camera catch-up speed (higher = snappier)
   lookahead: 0.35,    // seconds of puck velocity the camera leads by
   endOverscan: 20,    // how far past the end boards the camera may show (the crowd lives there)
