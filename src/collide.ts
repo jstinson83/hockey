@@ -201,6 +201,13 @@ export function attackedNet(team: Team): Net {
   return team === 0 ? NETS[0] : NETS[1];
 }
 
+/** Is the point in the slot: in front of the net `team` attacks, close to it and near its centre line? */
+export function inSlot(team: Team, p: { x: number; y: number }): boolean {
+  const net = attackedNet(team);
+  const depth = (p.y - net.gy) * -net.dir; // distance out from the goal line
+  return depth > 6 && depth < TUNING.aiSlotRange && Math.abs(p.x - RINK.w / 2) < TUNING.aiSlotWidth;
+}
+
 /** The net a team defends: red defends the bottom net, blue the top. */
 export function defendedNet(team: Team): Net {
   return team === 0 ? NETS[1] : NETS[0];

@@ -1,4 +1,4 @@
-import { attackedNet } from './collide';
+import { attackedNet, inSlot } from './collide';
 import type { Intent } from './input';
 import { nextRandom } from './rng';
 import { clamp01, wrapAngle } from './mathutil';
@@ -35,13 +35,19 @@ export function handleButtons(world: World, i: number, intent: Intent | undefine
 
   if (pressed && !hasPuck) {
     s.pressedWithoutPuck = true;
-    burst(s, intent);
+    // A press while a teammate's pass is on its way arms a one-timer for its receiver instead of a burst.
+    if (!armOneTimer(world, s)) burst(s, intent);
   }
   // A press that began without the puck stays a burst even if the puck arrives mid-press.
   const shotPress = !s.pressedWithoutPuck;
   if (!held) s.pressedWithoutPuck = false;
 
   if (hasPuck && world.game.phase === 'play') {
+    if (s.oneTimer > 0) {
+      s.oneTimer = 0;
+      shoot(world, i, true);
+      return;
+    }
     if (passPressed) {
       passPuck(world, i);
       return;
@@ -50,6 +56,20 @@ export function handleButtons(world: World, i: number, intent: Intent | undefine
     if (released && shotPress) shoot(world, i);
   }
   if (world.puck.carrier !== i) s.charge = 0;
+}
+
+/**
+ * Arm the one-timer on the receiver of a teammate's pass in flight (the presser may be the passer
+ * or the receiver themself). The window is generous, so the press can come well before the puck.
+ */
+function armOneTimer(world: World, s: Skater): boolean {
+  const p = world.puck;
+  if (world.skaters[world.controlled[s.team]] !== s || !world.humans[s.team]) return false; // AI presses are bursts
+  if (p.carrier >= 0 || p.passTo < 0 || p.passTime <= 0 || p.passTeam !== s.team || world.game.phase !== 'play') return false;
+  const r = world.skaters[p.passTo];
+  if (r.team !== s.team) return false;
+  r.oneTimer = TUNING.oneTimerWindow;
+  return true;
 }
 
 /**
@@ -95,7 +115,7 @@ function burst(s: Skater, intent: Intent | undefined): void {
  * (the pull keeps the lateral aim, only clamping to inside the posts), then jittered.
  * Aim assist gets the puck to the net; the goalie decides whether it goes in.
  */
-function shotAngle(world: World, s: Skater, charge01: number): number {
+function shotAngle(world: World, s: Skater, charge01: number, oneTimer = false): number {
   // Aim from where the puck actually leaves (the carry point), not the skater's centre:
   // on a steep angle the 3.4-unit carry offset is several units of error at the net.
   const o = world.puck;
@@ -112,29 +132,33 @@ function shotAngle(world: World, s: Skater, charge01: number): number {
   // the net, whatever way the skater is facing; further out the facing has to be roughly ahead.
   const close = inFront && dist < TUNING.aimCloseRange;
   const ahead = inFront && Math.abs(wrapAngle(toNet - s.facing)) < TUNING.aimAssistCone && fy * dy > 0;
-  if (ahead || close) {
+  // A one-timer is struck at the net from wherever the receiver happens to be facing.
+  const forced = oneTimer && inFront;
+  if (ahead || close || forced) {
     const reach = GOAL.width / 2 - TUNING.aimInset;
     // Follow the facing ray's crossing when it points reasonably at the goal line; a near-parallel
     // ray crosses miles away and would clamp to a post, so lean toward the faced side instead.
     const xCross = ahead && Math.abs(fy) > 0.3
       ? o.x + Math.cos(s.facing) * (dy / fy)
+      : forced && !close ? RINK.w / 2 + (nextRandom(world) * 2 - 1) * reach * 0.8
       : RINK.w / 2 + Math.cos(s.facing) * reach * 0.5;
     const targetX = Math.min(Math.max(xCross, RINK.w / 2 - reach), RINK.w / 2 + reach);
     const target = Math.atan2(dy, targetX - o.x);
-    angle += wrapAngle(target - s.facing) * (close && !ahead ? 1 : TUNING.aimAssist) * (1 - far * (1 - TUNING.aimFarAssist));
+    angle += wrapAngle(target - s.facing) * ((close || forced) && !ahead ? 1 : TUNING.aimAssist) * (1 - far * (1 - TUNING.aimFarAssist));
   }
   const spread = (TUNING.wristSpread + (TUNING.slapSpread - TUNING.wristSpread) * charge01) * (1 + far * (TUNING.farSpreadMult - 1));
-  return angle + (nextRandom(world) * 2 - 1) * spread;
+  return angle + (nextRandom(world) * 2 - 1) * (spread + (oneTimer ? TUNING.oneTimerSpread : 0));
 }
 
-function shoot(world: World, i: number): void {
+function shoot(world: World, i: number, oneTimer = false): void {
   const s = world.skaters[i];
-  const t = clamp01(s.charge / TUNING.chargeTime);
+  const t = oneTimer ? TUNING.oneTimerCharge : clamp01(s.charge / TUNING.chargeTime);
   const power = TUNING.wristSpeed + (TUNING.slapSpeed - TUNING.wristSpeed) * t;
-  const angle = shotAngle(world, s, t);
+  const angle = shotAngle(world, s, t, oneTimer);
   const p = world.puck;
   p.carrier = -1;
   p.passTime = 0;
+  p.passTo = -1;
   p.vx = Math.cos(angle) * power + s.vx * 0.5;
   p.vy = Math.sin(angle) * power + s.vy * 0.5;
   s.lockout = TUNING.shooterLockout;
@@ -172,6 +196,10 @@ function passPuck(world: World, i: number): void {
   p.carrier = -1;
   p.passTeam = s.team;
   p.passTime = TUNING.passProtectTime;
+  p.passTo = mate ? world.skaters.indexOf(mate) : -1;
+  // An AI passer's receiver in the slot has the one-timer ready (a human passer presses shoot for it).
+  const human = world.humans[s.team] && world.skaters[world.controlled[s.team]] === s;
+  if (mate && !human && inSlot(s.team, mate) && nextRandom(world) < TUNING.aiOneTimerChance) mate.oneTimer = TUNING.oneTimerWindow;
   p.vx = Math.cos(angle) * TUNING.passSpeed + s.vx * 0.5;
   p.vy = Math.sin(angle) * TUNING.passSpeed + s.vy * 0.5;
   s.lockout = TUNING.shooterLockout;

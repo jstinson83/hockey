@@ -1,4 +1,4 @@
-import { attackedNet, defendedNet, NETS } from './collide';
+import { attackedNet, defendedNet, inSlot, NETS } from './collide';
 import type { Intent } from './input';
 import { nextRandom } from './rng';
 import type { Skater, World } from './sim-types';
@@ -205,7 +205,7 @@ function offenceAnchor(plan: Offence, s: Skater, carrier: Point): Point {
       }
       if (s.role === 'C') return keepIn(wide(cSide, 22), net.gy - fwd * 10);
       const strongWing = side === cSide;
-      return strongWing ? keepIn(wide(cSide, 9), behind - fwd * 2) : keepIn(CX - cSide * 6, net.gy - fwd * 6); // far wing at the back post
+      return strongWing ? keepIn(wide(cSide, 9), behind - fwd * 2) : keepIn(CX - cSide * 6, net.gy - fwd * 11); // far wing at the back post, in the slot
     }
     default: // set
       if (isDefence(s.role)) return point;
@@ -466,8 +466,8 @@ function carrierIntent(world: World, i: number, dt: number): Intent {
       }
     }
 
-    // Pass? A breakout outlet first, then the usual read.
-    const mate = breakoutPass(world, i) ?? choosePass(world, i);
+    // Pass? A one-timer feed to the slot first, then a breakout outlet, then the usual read.
+    const mate = slotPass(world, i) ?? breakoutPass(world, i) ?? choosePass(world, i);
     if (mate) {
       ai.passCd = TUNING.aiPassCooldown;
       const dx = mate.x - s.x;
@@ -477,6 +477,22 @@ function carrierIntent(world: World, i: number, dt: number): Intent {
     }
   }
   return carryIntent(world, i);
+}
+
+/** A teammate alone in the slot with a clear lane: feed him for a one-timer. */
+function slotPass(world: World, i: number): Point | null {
+  const s = world.skaters[i];
+  if (s.ai.passCd > 0 || inSlot(s.team, s)) return null; // the slot skater shoots rather than passes
+  let best: Point | null = null;
+  let bestOpen = TUNING.aiSlotOpen;
+  for (let j = 0; j < world.skaters.length; j++) {
+    const m = world.skaters[j];
+    if (j === i || m.team !== s.team || !inSlot(s.team, m)) continue;
+    const open = nearestOpponent(world, s.team, m);
+    if (open < bestOpen || dist(s, m) < 6 || laneBlocked(world, s.team, s, m)) continue;
+    best = m; bestOpen = open;
+  }
+  return best && nextRandom(world) < TUNING.aiSlotPassChance ? best : null;
 }
 
 /** The breakout's designated outlet, if the carrier is breaking out and the lane to them is open. */

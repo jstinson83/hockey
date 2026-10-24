@@ -33,6 +33,9 @@ export const TUNING = {
   pickupRadius: 4.2,  // skater centre -> puck centre
   passProtectTime: 1.0, // s after a pass during which opponents have a shorter reach on the puck
   passInterceptReach: 0.55, // opponents' pickup reach on a pass in flight, as a fraction of pickupRadius
+  oneTimerWindow: 1.2, // s after pressing shoot in advance during which the receiver shoots the pass first time
+  oneTimerCharge: 0.7, // charge fraction a one-timer is struck with (0 = wrist, 1 = full slapshot)
+  oneTimerSpread: 0.05, // extra rad of random error on a one-timer
   shooterLockout: 0.35, // s before the shooter can re-collect their own shot
 
   // Burst: tapping the shoot button without the puck. Each tap kicks the skater forward
@@ -111,6 +114,11 @@ export const TUNING = {
   aiArrive: 3.0,        // slows to a stop within maxSpeed*aiSpeed/aiArrive units of its target
   aiShootRange: 52,     // carrier considers shooting inside this distance to the net
   aiShootChance: 0.45,  // per decision (a few per second) once in range with a lane
+  aiSlotRange: 38,      // a teammate this close to the net, in front of it, is in the slot
+  aiSlotWidth: 22,      // ...and within this of the net's centre line
+  aiSlotOpen: 9,        // an opponent this close takes the slot teammate off for a one-timer
+  aiSlotPassChance: 0.85, // per decision, chance to feed an open slot teammate
+  aiOneTimerChance: 0.85, // chance an AI receiver in the slot shoots a pass first time
   aiAimMistake: 0.3,    // chance a shot is aimed at the goalie's side instead of away from it
   aiLaneRadius: 3,      // an opponent this close to a shot/pass line blocks it
   aiPassCooldown: 0.9,  // s between passes

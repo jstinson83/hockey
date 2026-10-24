@@ -34,6 +34,7 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
   stick direction aims the puck, win quality falls with lateness. Pass is the faceoff button, so it doesn't switch players during the draw. HUD indicator is top right.
 - Goalie holds: a puck reaching the goalie sticks with a chance that falls with its speed (`goalieCatch*`); the goalie is then steerable
   (human: pass / clear / freeze; AI: pass or freeze after a moment). A freeze or a hold past `goalieHoldMax` whistles an end-zone faceoff.
+- One-timers: a shoot press while a teammate's pass is in flight (`Puck.passTo`) arms `Skater.oneTimer` on the receiver, who shoots on pickup (`actions.ts`); AI carriers feed an open slot teammate (`slotPass`, `inSlot`) and AI receivers in the slot get it armed automatically.
 - Skater AI: 5v5 teams, roles (C/L/R/LD/RD), carrier decisions, switching.
 - AI strategies, first slice: per-team breakout plans (`World.breakout`: carry / boards / swing /
   stretch) that change support anchors and the carrier's designated outlet pass while it is deep in
