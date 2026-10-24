@@ -70,7 +70,7 @@ export const TUNING = {
   faceoffTick: 1.3,      // s each number of the count-in stays up
   faceoffHoldMin: 0.3,   // s the ref holds the puck after the count, at least
   faceoffHoldMax: 0.9,   // ... and at most (random, so the drop can't be counted)
-  faceoffWindow: 0.35,   // s after the drop in which a press wins; before the drop it's a false start
+  faceoffWindow: 0.47,   // s after the drop in which a press wins; before the drop it's a false start
   faceoffAiMin: 0.12,    // s after the drop the AI reacts, at the quickest
   faceoffAiMax: 0.3,     // ... and the slowest
   faceoffCleanBest: 0.95, // chance the winner gets the puck where they aimed it, pressing right on the drop
