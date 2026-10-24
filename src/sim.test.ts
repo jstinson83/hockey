@@ -575,6 +575,20 @@ describe('neutral zone', () => {
     for (const r of ['LD', 'RD']) expect(byRole(r).y).toBeGreaterThan(carrier.y + 8); // behind the pressers, toward their own net
   });
 
+  it('press: against a set breakout only the centre forechecks; the carrier-side wing holds the lane', () => {
+    const w = createWorld(6, { neutral: ['press', 'man'], breakout: ['carry', 'boards'] });
+    w.humans = [false, false];
+    w.game.phase = 'play';
+    const blue = w.skaters.map((s, i) => ({ s, i })).filter((o) => o.s.team === 1);
+    const carrier = { x: CX - 20, y: 30 };
+    blue.forEach((o, k) => Object.assign(o.s, { x: 12 + k * 15, y: 20 + (k % 2) * 12, vx: 0, vy: 0 }));
+    const hold = () => { Object.assign(blue[0].s, { ...carrier, vx: 0, vy: 0 }); w.puck.carrier = blue[0].i; blue.slice(1).forEach((o) => { o.s.vx = o.s.vy = 0; }); };
+    hold();
+    for (let i = 0; i < 300; i++) { step(w, [idle, idle], DT); hold(); }
+    const left = red(w).find((s) => s.role === 'L')!;
+    expect(Math.hypot(left.x - carrier.x, left.y - carrier.y)).toBeGreaterThan(15);
+  });
+
   it('the plans only apply while the puck is out of their end: deeper in, they play like man', () => {
     const play = (plan: 'man' | 'trap' | 'press') => JSON.stringify(red(setUp(plan, CX, 150, 3)).map((s) => [s.x.toFixed(2), s.y.toFixed(2)]));
     expect(play('trap')).toBe(play('man'));
