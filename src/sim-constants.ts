@@ -31,6 +31,8 @@ export const TUNING = {
   carryOffset: 3.4,   // puck distance from skater centre while carried
   pickupSpeed: 70,    // free puck faster than this can't be picked up
   pickupRadius: 4.2,  // skater centre -> puck centre
+  passProtectTime: 1.0, // s after a pass during which opponents have a shorter reach on the puck
+  passInterceptReach: 0.55, // opponents' pickup reach on a pass in flight, as a fraction of pickupRadius
   shooterLockout: 0.35, // s before the shooter can re-collect their own shot
 
   // Burst: tapping the shoot button without the puck. Each tap kicks the skater forward

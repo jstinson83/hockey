@@ -751,6 +751,23 @@ describe('AI and control', () => {
     expect(play(7)).not.toBe(play(8));
   });
 
+  it('a pass in flight is harder for an opponent to pick off, until the protection runs out', () => {
+    const attempt = (passTeam: -1 | 0 | 1, passTime: number): number => {
+      const w = liveWorld();
+      const [red, blue] = w.skaters;
+      red.x = 10; blue.x = CX; blue.y = RINK.h / 2; blue.vx = blue.vy = 0;
+      w.puck.carrier = -1;
+      w.puck.x = CX + TUNING.pickupRadius * 0.8; w.puck.y = RINK.h / 2; // inside normal reach, outside the reduced one
+      w.puck.vx = w.puck.vy = 0;
+      w.puck.passTeam = passTeam; w.puck.passTime = passTime;
+      step(w, [idle, idle], DT);
+      return w.puck.carrier;
+    };
+    expect(attempt(0, 1)).toBe(-1);                       // red's pass: blue can't reach it yet
+    expect(attempt(0, 0)).toBeGreaterThanOrEqual(0);      // protection expired: normal pickup
+    expect(attempt(1, 1)).toBeGreaterThanOrEqual(0);      // blue's own pass: no handicap
+  });
+
   it('the nearest skater goes for a loose puck and picks it up', () => {
     const w = aiWorld();
     // Red's wing is the nearest red skater to a puck deep in red's right side.

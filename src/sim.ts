@@ -39,7 +39,7 @@ export function createWorld(seed = 1, opts: { perTeam?: number; breakout?: [Brea
   const world: World = {
     skaters,
     goalies: [makeGoalie(0), makeGoalie(1)],
-    puck: { x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, carrier: -1 },
+    puck: { x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, carrier: -1, passTeam: -1, passTime: 0 },
     game: {
       phase: 'faceoff', timer: GAME.faceoffSeconds, period: 1, overtime: false,
       clock: GAME.periodSeconds, score: [0, 0], lastScorer: null, froze: null,

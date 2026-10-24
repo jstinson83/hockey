@@ -43,6 +43,8 @@ export const TUNING_GROUPS: Group[] = [
       { key: 'carryOffset', label: 'Carry distance', min: 2, max: 6, step: 0.1 },
       { key: 'pickupSpeed', label: 'Max pickup speed', min: 20, max: 150, step: 1 },
       { key: 'pickupRadius', label: 'Pickup reach', min: 2, max: 8, step: 0.1 },
+      { key: 'passProtectTime', label: 'Pass protection (s)', min: 0, max: 3, step: 0.1, hint: 'after a pass, opponents have a shorter reach on the puck' },
+      { key: 'passInterceptReach', label: 'Interception reach', min: 0, max: 1, step: 0.05, hint: 'opponents\' pickup reach on a pass, as a fraction of normal' },
       { key: 'shooterLockout', label: 'Shooter lockout (s)', min: 0, max: 1, step: 0.05 },
       { key: 'maxPuckSpeed', label: 'Puck speed cap', min: 80, max: 300, step: 5 },
       { key: 'puckMaxStep', label: 'Puck collision step', min: 0.2, max: 2, step: 0.1 },
