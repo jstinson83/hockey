@@ -248,9 +248,12 @@ function defendAnchor(world: World, s: Skater, puck: Point, carrierIdx: number):
     const x = goal.x + ((puck.x - goal.x) / d) * depth + sideOf(s.role) * 10;
     return keepIn(x, goal.y + ((puck.y - goal.y) / d) * depth);
   }
-  const marks = world.skaters.filter((o, j) => o.team !== s.team && j !== carrierIdx).sort((a, b) => a.x - b.x);
+  // Wings mark opponents who are dangerous (near our net); whoever sits out at the points is left open.
+  const marks = world.skaters
+    .filter((o, j) => o.team !== s.team && j !== carrierIdx && Math.abs(o.y - own.gy) <= TUNING.aiCoverDefenceDepth)
+    .sort((a, b) => a.x - b.x);
   const mark = s.role === 'L' ? marks[0] : marks[marks.length - 1];
-  if (!mark) return keepIn(CX + (s.role === 'L' ? -16 : 16), own.gy - own.dir * 20);
+  if (!mark) return keepIn(CX + sideOf(s.role) * 16, own.gy - own.dir * 35); // nobody dangerous to pick up: hold a lane
   const d = dist(mark, goal) || 1;
   return keepIn(mark.x + ((goal.x - mark.x) / d) * 5, mark.y + ((goal.y - mark.y) / d) * 5);
 }
@@ -272,7 +275,10 @@ function neutralAnchor(world: World, s: Skater, carrier: Point, carrierIdx: numb
     // instead of joining, so the outlet pass isn't covered by two skaters chasing one.
     const vsBreakout = !!carrierTeam && breakingOut(world, carrierTeam, carrier);
     if (s.role === 'C' || (s.role === cSide && !vsBreakout)) return { target: routeAroundNet(s, onCarrier), press: true };
-    if (isDefence(s.role)) return { target: keepIn(CX + sideOf(s.role) * 14, carrier.y - fwd * TUNING.aiPressGap), press: false };
+    if (isDefence(s.role)) {
+      const prog = Math.min(progress(s.team, carrier.y) - TUNING.aiPressGap, TUNING.aiDefenceStepUp);
+      return { target: keepIn(CX + sideOf(s.role) * 14, MID + fwd * prog), press: false };
+    }
     return { target: keepIn(s.role === cSide ? carrier.x : CX, carrier.y - fwd * 14), press: false };
   }
   // trap
@@ -281,6 +287,8 @@ function neutralAnchor(world: World, s: Skater, carrier: Point, carrierIdx: numb
   const carrierProgress = progress(s.team, carrier.y);
   const wallProgress = clamp(carrierProgress - TUNING.aiTrapGap, -TUNING.aiTrapLine, TUNING.aiPointDepth);
   const wallY = MID + fwd * wallProgress;
+  // The defence never step up past aiDefenceStepUp, so a carrier who gets out of their end isn't already behind them.
+  const defenceY = MID + fwd * Math.min(wallProgress, TUNING.aiDefenceStepUp);
   if (s.role === 'C') {
     // Angle the carrier: stand between it and the middle of the ice, a little on our side of it.
     const t = keepIn(carrier.x + (CX - carrier.x) * 0.4, carrier.y - fwd * 8);
@@ -291,7 +299,7 @@ function neutralAnchor(world: World, s: Skater, carrier: Point, carrierIdx: numb
   }
   const slotX = s.role === 'L' ? 12 : s.role === 'LD' ? 31 : s.role === 'RD' ? 54 : 73;
   const shade = clamp((carrier.x - CX) * 0.5, -14, 14); // the wall slides across with the puck
-  return { target: keepIn(slotX + shade, wallY), press: false };
+  return { target: keepIn(slotX + shade, isDefence(s.role) ? defenceY : wallY), press: false };
 }
 
 /**

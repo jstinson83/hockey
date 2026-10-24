@@ -177,6 +177,7 @@ export const TUNING_GROUPS: Group[] = [
       { key: 'aiTrapLine', label: 'Trap line depth', min: 0, max: 24, step: 1, hint: 'units on our side of centre' },
       { key: 'aiTrapGap', label: 'Trap: step-up gap', min: 8, max: 60, step: 1, hint: 'wall stays this far ahead of a carrier deep in their end' },
       { key: 'aiPressGap', label: 'Press: defence gap', min: 8, max: 45, step: 1, hint: 'units behind the carrier' },
+      { key: 'aiDefenceStepUp', label: 'Defence step-up limit', min: -20, max: 40, step: 1, hint: 'trap / press: furthest the defence go past centre' },
       { key: 'aiBurstCooldown', label: 'Burst cooldown (s)', min: 0.2, max: 2, step: 0.05 },
       { key: 'aiCheckChance', label: 'Check chance', min: 0, max: 1, step: 0.05 },
     ],
