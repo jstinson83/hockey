@@ -59,6 +59,7 @@ function handOverControl(world: World, team: Team, to: number, passPressed: bool
 
 export function moveSkater(s: Skater, intent: Intent | undefined, dt: number): void {
   s.lockout = Math.max(0, s.lockout - dt);
+  s.oneTimer = Math.max(0, s.oneTimer - dt);
   s.checking = Math.max(0, s.checking - dt);
   s.poking = Math.max(0, s.poking - dt);
   s.pokeCd = Math.max(0, s.pokeCd - dt);

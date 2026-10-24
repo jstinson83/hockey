@@ -15,6 +15,7 @@ export interface Skater {
   actionHeld: boolean; // previous frame's shoot-button state, for press/release detection
   passHeld: boolean;
   pressedWithoutPuck: boolean; // this press began without the puck, so it is a burst, not a shot
+  oneTimer: number;    // s left in which a pass reaching this skater is shot first time (armed by a shoot press in advance)
   lockout: number;     // s before this skater can pick up the puck
   boost: number;       // extra top speed from burst taps; decays
   checking: number;    // s left in the check window opened by a tap
@@ -51,6 +52,7 @@ export interface Puck {
   carrier: number; // index into skaters, or -1 when loose
   passTeam: -1 | 0 | 1; // team that just passed it, or -1; opponents have a shorter reach while passTime runs
   passTime: number;     // s of pass protection left
+  passTo: number;       // skater a pass in flight was aimed at, or -1
 }
 
 export type Phase = 'faceoff' | 'play' | 'goal' | 'end';

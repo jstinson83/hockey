@@ -24,7 +24,7 @@ const ROLES: Role[] = ['C', 'L', 'R', 'LD', 'RD'];
 function makeSkater(team: Team, slot: number): Skater {
   return {
     x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, facing: 0, team, role: ROLES[slot % ROLES.length], ai: newAi(),
-    charge: 0, actionHeld: false, passHeld: false, pressedWithoutPuck: false, lockout: 0,
+    charge: 0, actionHeld: false, passHeld: false, pressedWithoutPuck: false, oneTimer: 0, lockout: 0,
     boost: 0, checking: 0, poking: 0, pokeCd: 0, pokeHeld: false, stun: 0, act: 'none', actT: 99, color: TEAM_COLORS[team],
   };
 }
@@ -40,7 +40,7 @@ export function createWorld(seed = 1, opts: { perTeam?: number; breakout?: [Brea
   const world: World = {
     skaters,
     goalies: [makeGoalie(0), makeGoalie(1)],
-    puck: { x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, carrier: -1, passTeam: -1, passTime: 0 },
+    puck: { x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, carrier: -1, passTeam: -1, passTime: 0, passTo: -1 },
     game: {
       phase: 'faceoff', timer: 0, faceoff: undefined as never, period: 1, overtime: false,
       clock: GAME.periodSeconds, score: [0, 0], lastScorer: null, froze: null,

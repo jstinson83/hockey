@@ -29,6 +29,7 @@ export function tryCatch(world: World, g: Goalie, speed: number): boolean {
   g.passHeld = g.actionHeld = g.pokeHeld = true;
   world.puck.carrier = -1;
   world.puck.passTime = 0;
+  world.puck.passTo = -1;
   world.puck.vx = world.puck.vy = 0;
   return true;
 }

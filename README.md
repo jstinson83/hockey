@@ -13,6 +13,7 @@ TypeScript + Vite + Canvas 2D. Local vs. AI and local 1v1 (two gamepads).
 Controls: P1 arrows + Space (shoot) + Z (pass; switch player without the puck) + X (poke check), or gamepad 1; P2 gamepad 2 only. On a
 PS5 pad: X = shoot, Square = pass, and without the puck Square switches player. Circle = poke check (stab the stick at an opposing carrier in front of you; strips the puck some of the time, with a cooldown). With the puck, tap shoot = wrist shot, hold = charge a
 slapshot (aim assist pulls shots toward the net; spread keeps them from being automatic).
+One-timers: after passing (or as the receiver), tap shoot while the pass is still in flight and the receiver shoots it first time on pickup, straight at the net; the window is generous (`oneTimerWindow`). The AI feeds open teammates in the slot and one-times those passes.
 Without the puck, tapping shoot is a speed burst (stacks to a cap) and opens a short
 bodycheck window. P / Esc / the Options button pauses (it also pauses when the tab loses
 focus). R resets, F toggles fullscreen, S mutes the crowd noise. Each game starts both teams on the cycle offence, swing breakout and press neutral zone (shown above the scoreboard; change them from the pause menu or the keys below);

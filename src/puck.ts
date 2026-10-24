@@ -98,6 +98,7 @@ export function updatePuck(world: World, dt: number): void {
   if (best >= 0) {
     puck.carrier = best;
     puck.passTime = 0;
+    puck.passTo = -1;
     skaters[best].charge = 0;
   }
 }
@@ -112,6 +113,7 @@ export function knockLoose(world: World, hitter: number): void {
   const d = Math.hypot(dx, dy) || 1;
   puck.carrier = -1;
   puck.passTime = 0;
+  puck.passTo = -1;
   puck.vx = victim.vx + (dx / d) * 25;
   puck.vy = victim.vy + (dy / d) * 25;
   victim.lockout = 0.4;

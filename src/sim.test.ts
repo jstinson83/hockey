@@ -1148,3 +1148,94 @@ describe('faceoff draw', () => {
     expect(w.controlled[0]).toBe(cur);
   });
 });
+
+describe('one-timers', () => {
+  const press: Intent = { x: 0, y: 0, action: true, pass: false };
+  const passBtn: Intent = { x: 0, y: 0, action: false, pass: true };
+
+  /** Red's human has the puck out wide; a teammate waits in the slot dead ahead. Opponents are parked in the far corner. */
+  function slotWorld(): { w: World; passer: number; mate: number } {
+    const w = createWorld(3, { perTeam: 3 });
+    w.humans = [true, false];
+    w.game.phase = 'play';
+    const net = NETS[0];
+    const passer = w.controlled[0];
+    const mate = w.skaters.findIndex((s, i) => s.team === 0 && i !== passer);
+    w.skaters.forEach((s, i) => {
+      s.vx = s.vy = 0;
+      if (s.team === 1) { s.x = 8; s.y = RINK.h - 20; }
+      else if (i !== passer && i !== mate) { s.x = RINK.w - 8; s.y = RINK.h - 20; }
+    });
+    const p = w.skaters[passer];
+    p.x = CX + 40; p.y = net.gy + 50; p.facing = Math.atan2(-25, -40); w.puck.carrier = passer;
+    const m = w.skaters[mate];
+    m.x = CX; m.y = net.gy + 25; m.facing = Math.PI / 2; // facing away from the net
+    return { w, passer, mate };
+  }
+
+  it('shoot pressed while the pass is in flight makes the receiver shoot it on pickup', () => {
+    const { w, mate } = slotWorld();
+    step(w, [passBtn, idle], DT);
+    expect(w.puck.passTo).toBe(mate);
+    step(w, [press, idle], DT);     // in advance: the puck is still a way off
+    expect(w.skaters[mate].oneTimer).toBeGreaterThan(0);
+    expect(w.skaters[mate].boost).toBe(0);
+    let shotAt = -1;
+    for (let n = 0; n < 120 && shotAt < 0; n++) {
+      step(w, [idle, idle], DT);
+      if (w.puck.carrier < 0 && w.skaters[mate].lockout > 0) shotAt = n;
+    }
+    expect(shotAt).toBeGreaterThanOrEqual(0);
+    expect(w.puck.vy).toBeLessThan(0);                                  // at the net, not where the receiver faced
+    expect(Math.hypot(w.puck.vx, w.puck.vy)).toBeGreaterThan(TUNING.wristSpeed);
+    expect(w.skaters[mate].oneTimer).toBe(0);
+  });
+
+  it('without the press the receiver just takes the pass', () => {
+    const { w, mate } = slotWorld();
+    step(w, [passBtn, idle], DT);
+    run(w, 1.5);
+    expect(w.puck.carrier).toBe(mate);
+  });
+
+  it('a press with no pass in flight is still a plain burst', () => {
+    const { w, mate, passer } = slotWorld();
+    w.puck.carrier = -1; w.puck.x = CX; w.puck.y = RINK.h / 2; // loose puck, nobody passing
+    w.skaters[passer].x = CX + 40; w.skaters[passer].y = RINK.h / 2 + 60;
+    step(w, [press, idle], DT);
+    expect(w.skaters[passer].boost).toBeGreaterThan(0);
+    expect(w.skaters[mate].oneTimer).toBe(0);
+  });
+
+  it('the window is generous and runs out', () => {
+    expect(TUNING.oneTimerWindow).toBeGreaterThanOrEqual(1);
+    const { w, mate } = slotWorld();
+    step(w, [passBtn, idle], DT);
+    step(w, [press, idle], DT);
+    run(w, TUNING.oneTimerWindow + 0.1);
+    expect(w.skaters[mate].oneTimer).toBe(0);
+  });
+
+  it('an AI carrier feeds an open slot teammate, who one-times it', () => {
+    const w = createWorld(5, { perTeam: 3 });
+    w.humans = [false, false];
+    w.game.phase = 'play';
+    const net = NETS[0];
+    const reds = w.skaters.map((_, i) => i).filter((i) => w.skaters[i].team === 0);
+    w.skaters.forEach((s) => { s.vx = s.vy = 0; if (s.team === 1) { s.x = RINK.w - 8; s.y = RINK.h - 20; } });
+    const [c, slot, other] = reds;
+    Object.assign(w.skaters[c], { x: CX + 45, y: net.gy + 60, facing: Math.atan2(-35, -45) });
+    Object.assign(w.skaters[slot], { x: CX, y: net.gy + 25, facing: Math.PI / 2 });
+    Object.assign(w.skaters[other], { x: 8, y: RINK.h - 20 });
+    w.puck.carrier = c;
+    let passed = false;
+    let shot = false;
+    for (let n = 0; n < 600 && !shot; n++) {
+      step(w, [idle, idle], DT);
+      if (w.puck.passTo === slot) passed = true;
+      if (passed && w.puck.carrier < 0 && w.skaters[slot].lockout > 0) shot = true;
+    }
+    expect(passed).toBe(true);
+    expect(shot).toBe(true);
+  });
+});
