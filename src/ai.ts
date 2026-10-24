@@ -265,11 +265,15 @@ function neutralAnchor(world: World, s: Skater, carrier: Point, carrierIdx: numb
   const fwd = attackedNet(s.team).dir;
   const plan = world.neutral[s.team];
   const cSide = carrier.x < CX ? 'L' : 'R';
+  const carrierTeam = carrierIdx >= 0 ? world.skaters[carrierIdx].team : null;
   const onCarrier = { x: carrier.x + (carrierIdx >= 0 ? world.skaters[carrierIdx].vx * 0.3 : 0), y: carrier.y + (carrierIdx >= 0 ? world.skaters[carrierIdx].vy * 0.3 : 0) };
   if (plan === 'press') {
-    if (s.role === 'C' || s.role === cSide) return { target: routeAroundNet(s, onCarrier), press: true };
+    // Against a set breakout only the centre forechecks; the wing on the carrier's side holds the lane
+    // instead of joining, so the outlet pass isn't covered by two skaters chasing one.
+    const vsBreakout = !!carrierTeam && breakingOut(world, carrierTeam, carrier);
+    if (s.role === 'C' || (s.role === cSide && !vsBreakout)) return { target: routeAroundNet(s, onCarrier), press: true };
     if (isDefence(s.role)) return { target: keepIn(CX + sideOf(s.role) * 14, carrier.y - fwd * TUNING.aiPressGap), press: false };
-    return { target: keepIn(CX, carrier.y - fwd * 14), press: false };
+    return { target: keepIn(s.role === cSide ? carrier.x : CX, carrier.y - fwd * 14), press: false };
   }
   // trap
   // The wall holds its line while the carrier is in the neutral zone, then steps up with them as they
