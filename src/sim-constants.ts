@@ -7,7 +7,7 @@ export const GOAL = { line: 12, width: 14, depth: 5, height: 4, crease: 12 };
 export type Team = 0 | 1;
 
 /** Game flow. Team 0 (red, P1) defends the bottom net and attacks the top; team 1 (blue) the reverse. */
-export const GAME = { skatersPerTeam: 5, periods: 3, periodSeconds: 120, overtimeSeconds: 120, goalSeconds: 2.5 };
+export const GAME = { skatersPerTeam: 5, periods: 3, periodSeconds: 120, overtimeSeconds: 120, goalSeconds: 2.5, intermissionSeconds: 12 };
 export const TEAM_COLORS = ['#d33', '#36c'] as const;
 export const TEAM_NAMES = ['RED', 'BLUE'] as const;
 

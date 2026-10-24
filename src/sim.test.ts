@@ -207,10 +207,14 @@ describe('game flow', () => {
     expect(w.game.phase).toBe('play');
     run(w, GAME.periodSeconds + 0.1);
     expect(w.game.period).toBe(2);
+    expect(w.game.phase).toBe('intermission');
+    run(w, GAME.intermissionSeconds - 1);
+    expect(w.game.phase).toBe('intermission');
+    run(w, 1.2);
     expect(w.game.phase).toBe('faceoff');
-    run(w, (GAME.periodSeconds + faceoffMaxSeconds()) * 2 + 1);
+    run(w, (GAME.periodSeconds + GAME.intermissionSeconds + faceoffMaxSeconds()) * 2 + 1);
     expect(w.game.overtime).toBe(true);
-    run(w, GAME.overtimeSeconds + faceoffMaxSeconds() + 1);
+    run(w, GAME.overtimeSeconds + GAME.intermissionSeconds + faceoffMaxSeconds() + 1);
     expect(w.game.phase).toBe('end');
     expect(w.game.score).toEqual([0, 0]);
   });
