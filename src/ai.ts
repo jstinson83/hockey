@@ -310,6 +310,7 @@ export function reactToPlayers(world: World, i: number, anchor: Point, attacking
     world.skaters.forEach((o, j) => {
       if (o.team === s.team || j === carrierIdx || dist(o, anchor) > TUNING.aiCoverRange) return;
       const away = Math.abs(o.y - own.gy); // nearer our net = more dangerous
+      if (isDefence(o.role) && away > TUNING.aiCoverDefenceDepth) return; // their points are left open for the outlet pass
       if (away < best) { best = away; threat = o; }
     });
     if (threat) {
