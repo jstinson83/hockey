@@ -1,6 +1,7 @@
 import { aiIntent, newAi, type Breakout, type Neutral, type Offence, type Role } from './ai';
 import { collideCircles, collideNet, collideStatic, defendedNet, bounceOffBoards, NETS } from './collide';
 import { handleButtons } from './actions';
+import { newFaceoff, updateFaceoff } from './faceoff';
 import { advancePhase, checkGoal, placeForFaceoff } from './flow';
 import { updateHold } from './goalie-hold';
 import { goalieRadius, makeGoalie, updateGoalie } from './goalie';
@@ -41,7 +42,7 @@ export function createWorld(seed = 1, opts: { perTeam?: number; breakout?: [Brea
     goalies: [makeGoalie(0), makeGoalie(1)],
     puck: { x: RINK.w / 2, y: RINK.h / 2, vx: 0, vy: 0, carrier: -1 },
     game: {
-      phase: 'faceoff', timer: GAME.faceoffSeconds, period: 1, overtime: false,
+      phase: 'faceoff', timer: 0, faceoff: undefined as never, period: 1, overtime: false,
       clock: GAME.periodSeconds, score: [0, 0], lastScorer: null, froze: null,
     },
     rng: seed | 0,
@@ -54,6 +55,7 @@ export function createWorld(seed = 1, opts: { perTeam?: number; breakout?: [Brea
     neutral: opts.neutral ?? ['man', 'man'],
     offence: opts.offence ?? ['set', 'set'],
   };
+  world.game.faceoff = newFaceoff(world);
   placeForFaceoff(world);
   return world;
 }
@@ -76,6 +78,12 @@ export function addSkater(world: World, team: Team, x: number, y: number): Skate
 export function step(world: World, human: Intent[], dt: number): void {
   const { skaters, goalies, game } = world;
   const controllable = game.phase === 'play' || game.phase === 'goal';
+
+  if (game.phase === 'faceoff') {
+    updateFaceoff(world, human, dt);
+    // Pass is the faceoff button; a press must not carry over as a pass or switch once play starts.
+    skaters.forEach((s) => { s.passHeld = !!human[s.team]?.pass; });
+  }
 
   // While a goalie holds the puck its human drives the goalie, so the buttons don't also switch skaters.
   updateControlled(world, human.map((h, t) => (goalies[t].holding ? IDLE : h)), dt);

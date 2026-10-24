@@ -104,6 +104,22 @@ export const TUNING_GROUPS: Group[] = [
     ],
   },
   {
+    title: 'Faceoffs (pass on the drop)',
+    params: [
+      { key: 'faceoffCount', label: 'Count-in (s)', min: 0.5, max: 5, step: 0.1 },
+      { key: 'faceoffHoldMin', label: 'Ref hold, min (s)', min: 0, max: 2, step: 0.05 },
+      { key: 'faceoffHoldMax', label: 'Ref hold, max (s)', min: 0.1, max: 3, step: 0.05 },
+      { key: 'faceoffWindow', label: 'Press window (s)', min: 0.1, max: 1, step: 0.05 },
+      { key: 'faceoffAiMin', label: 'AI reaction, quickest (s)', min: 0, max: 0.6, step: 0.01 },
+      { key: 'faceoffAiMax', label: 'AI reaction, slowest (s)', min: 0.05, max: 0.8, step: 0.01 },
+      { key: 'faceoffCleanBest', label: 'Clean win, on the drop', min: 0, max: 1, step: 0.05 },
+      { key: 'faceoffCleanWorst', label: 'Clean win, end of window', min: 0, max: 1, step: 0.05 },
+      { key: 'faceoffSpeed', label: 'Puck push speed', min: 10, max: 70, step: 1 },
+      { key: 'faceoffMissAngle', label: 'Sloppy win, max angle off', min: 0, max: 3, step: 0.1 },
+      { key: 'faceoffMissSpeed', label: 'Sloppy win, speed fraction', min: 0.2, max: 1, step: 0.05 },
+    ],
+  },
+  {
     title: 'Checking',
     params: [
       { key: 'checkSpeed', label: 'Plain-contact knock-off speed', min: 5, max: 60, step: 1 },

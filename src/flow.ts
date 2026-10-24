@@ -1,3 +1,4 @@
+import { newFaceoff } from './faceoff';
 import { newAi } from './ai';
 import { defendedNet, NETS } from './collide';
 import { makeGoalie } from './goalie';
@@ -41,7 +42,7 @@ export function placeForFaceoff(world: World, spot?: { x: number; y: number }): 
 export function startFaceoff(world: World, spot?: { x: number; y: number }, froze: Team | null = null): void {
   placeForFaceoff(world, spot);
   world.game.phase = 'faceoff';
-  world.game.timer = GAME.faceoffSeconds;
+  world.game.faceoff = newFaceoff(world);
   world.game.froze = froze;
 }
 
@@ -77,11 +78,11 @@ export function whistleFrozenPuck(world: World, team: Team): void {
 export function advancePhase(world: World, dt: number): void {
   const g = world.game;
   if (g.phase === 'play') {
+    g.faceoff.since += dt;
     g.clock = Math.max(0, g.clock - dt);
     if (g.clock === 0) endPeriod(world);
   } else if (g.phase === 'faceoff') {
-    g.timer -= dt;
-    if (g.timer <= 0) g.phase = 'play';
+    if (g.faceoff.result) g.phase = 'play'; // the drop is resolved by updateFaceoff
   } else if (g.phase === 'goal') {
     g.timer -= dt;
     if (g.timer <= 0) {

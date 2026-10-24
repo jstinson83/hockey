@@ -4,6 +4,7 @@ import { addSkater, createWorld, step, type World } from './sim';
 import { FACEOFF, GAME, GOAL, RINK, TUNING } from './sim-constants';
 import { NETS } from './collide';
 import { reactToPlayers } from './ai';
+import { faceoffMaxSeconds } from './faceoff';
 
 const DT = 1 / 60;
 const idle: Intent = { x: 0, y: 0, action: false, pass: false };
@@ -179,7 +180,7 @@ describe('goalie holding the puck', () => {
     expect(w.goalies[1].holding).toBe(false);
     expect(w.skaters[0].y).toBeGreaterThan(w.puck.y); // attackers on the centre-ice side, defenders on the net side
     expect(w.skaters[1].y).toBeLessThan(w.puck.y);
-    run(w, GAME.faceoffSeconds + 0.1);
+    run(w, faceoffMaxSeconds() + 0.1);
     expect(w.game.phase).toBe('play');
   });
 
@@ -202,14 +203,14 @@ describe('goalie holding the puck', () => {
 describe('game flow', () => {
   it('plays three periods, then overtime, then ends tied', () => {
     const w = createWorld(1, { perTeam: 1 });
-    run(w, GAME.faceoffSeconds + 0.1);
+    run(w, faceoffMaxSeconds() + 0.1);
     expect(w.game.phase).toBe('play');
     run(w, GAME.periodSeconds + 0.1);
     expect(w.game.period).toBe(2);
     expect(w.game.phase).toBe('faceoff');
-    run(w, (GAME.periodSeconds + GAME.faceoffSeconds) * 2 + 1);
+    run(w, (GAME.periodSeconds + faceoffMaxSeconds()) * 2 + 1);
     expect(w.game.overtime).toBe(true);
-    run(w, GAME.overtimeSeconds + GAME.faceoffSeconds + 1);
+    run(w, GAME.overtimeSeconds + faceoffMaxSeconds() + 1);
     expect(w.game.phase).toBe('end');
     expect(w.game.score).toEqual([0, 0]);
   });
@@ -376,7 +377,7 @@ describe('shots', () => {
   });
 
   it('does not touch the aim of a shot facing away from the net', () => {
-    const w = release(3, CX, 80, Math.PI / 2); // facing down the ice, away from red's target
+    const w = release(7, CX, 80, Math.PI / 2); // facing down the ice, away from red's target
     expect(Math.atan2(w.puck.vy, w.puck.vx)).toBeGreaterThan(Math.PI / 2 - TUNING.wristSpread - 0.01);
     expect(Math.atan2(w.puck.vy, w.puck.vx)).toBeLessThan(Math.PI / 2 + TUNING.wristSpread + 0.01);
   });
@@ -1021,5 +1022,92 @@ describe('trap forecheck', () => {
     const wall = w.skaters.filter((s) => s.team === 1 && s.role !== 'C');
     const centreIce = RINK.h / 2;
     wall.forEach((s) => expect(s.y).toBeGreaterThan(centreIce + 15)); // well into red's half, not parked at the red line
+  });
+});
+
+describe('faceoff draw', () => {
+  const pass = (x = 0, y = 0): Intent => ({ x, y, action: false, pass: true });
+
+  /** A fresh faceoff run up to `dt` seconds after the drop; red's AI-free side idles, blue is AI. */
+  function toDrop(seed = 1): World {
+    const w = createWorld(seed, { perTeam: 1 });
+    w.humans = [true, false];
+    while (w.game.faceoff.t < w.game.faceoff.dropAt - DT / 2) step(w, [idle, idle], DT);
+    return w;
+  }
+
+  it('is a count-in, a hold and a drop, then play', () => {
+    const w = createWorld(1, { perTeam: 1 });
+    expect(w.game.phase).toBe('faceoff');
+    run(w, TUNING.faceoffCount - 0.1);
+    expect(w.game.phase).toBe('faceoff');
+    run(w, faceoffMaxSeconds());
+    expect(w.game.phase).toBe('play');
+  });
+
+  it('pressing pass early is a false start and forfeits the draw', () => {
+    const w = createWorld(1, { perTeam: 1 });
+    w.humans = [true, false];
+    step(w, [idle, idle], DT);
+    step(w, [pass(), idle], DT); // well before the drop
+    expect(w.game.faceoff.early[0]).toBe(true);
+    run(w, faceoffMaxSeconds());
+    expect(w.game.faceoff.result?.winner).toBe(1);
+  });
+
+  it('a quick press wins it and sends the puck where the stick points', () => {
+    for (let seed = 1; seed <= 12; seed++) {
+      const w = toDrop(seed);
+      step(w, [idle, idle], DT);
+      step(w, [pass(-1, 0), idle], DT); // right on the drop, before the AI reacts
+      run(w, 0.6);
+      const r = w.game.faceoff.result!;
+      expect(r.winner).toBe(0);
+      if (r.clean) expect(w.puck.vx).toBeLessThan(-TUNING.faceoffSpeed * 0.9);
+    }
+  });
+
+  it('with no stick, the winner sends it back toward their own net', () => {
+    const w = toDrop(2);
+    TUNING.faceoffCleanBest = TUNING.faceoffCleanWorst = 1;
+    onTestFinished(() => { TUNING.faceoffCleanBest = 0.95; TUNING.faceoffCleanWorst = 0.5; });
+    step(w, [idle, idle], DT);
+    step(w, [pass(), idle], DT);
+    while (!w.game.faceoff.result) step(w, [idle, idle], DT);
+    expect(w.game.faceoff.result).toEqual({ winner: 0, clean: true });
+    expect(w.puck.vy).toBeGreaterThan(0); // red defends the bottom
+  });
+
+  it('a win is not always clean: some come out off line and slow', () => {
+    let clean = 0;
+    let sloppy = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const w = toDrop(seed);
+      w.humans = [true, true]; // blue idles
+      run(w, 0.2); // a so-so reaction
+      step(w, [pass(0, 1), idle], DT);
+      run(w, 0.6);
+      if (w.game.faceoff.result!.clean) clean++;
+      else sloppy++;
+    }
+    expect(clean).toBeGreaterThan(20);
+    expect(sloppy).toBeGreaterThan(2);
+  });
+
+  it('when nobody presses, the puck squirts loose', () => {
+    const w = createWorld(3, { perTeam: 1 });
+    w.humans = [true, true];
+    run(w, faceoffMaxSeconds());
+    expect(w.game.faceoff.result).toEqual({ winner: null, clean: false });
+    expect(Math.hypot(w.puck.vx, w.puck.vy)).toBeGreaterThan(5);
+  });
+
+  it('a pass press at the drop does not also switch players or pass once play starts', () => {
+    const w = createWorld(1, { perTeam: 3 });
+    w.humans = [true, false];
+    while (w.game.faceoff.t < w.game.faceoff.dropAt) step(w, [idle, idle], DT);
+    const cur = w.controlled[0];
+    for (let i = 0; i < 40; i++) step(w, [pass(), idle], DT);
+    expect(w.controlled[0]).toBe(cur);
   });
 });
