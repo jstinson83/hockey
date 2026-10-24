@@ -107,6 +107,7 @@ export const TUNING_GROUPS: Group[] = [
     title: 'Faceoffs (pass on the drop)',
     params: [
       { key: 'faceoffCount', label: 'Count-in (s)', min: 0.5, max: 5, step: 0.1 },
+      { key: 'faceoffTick', label: 'Count-in number (s)', min: 0.3, max: 3, step: 0.05 },
       { key: 'faceoffHoldMin', label: 'Ref hold, min (s)', min: 0, max: 2, step: 0.05 },
       { key: 'faceoffHoldMax', label: 'Ref hold, max (s)', min: 0.1, max: 3, step: 0.05 },
       { key: 'faceoffWindow', label: 'Press window (s)', min: 0.1, max: 1, step: 0.05 },
