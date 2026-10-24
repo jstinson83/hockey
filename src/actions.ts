@@ -4,7 +4,15 @@ import { nextRandom } from './rng';
 import { clamp01, wrapAngle } from './mathutil';
 import { GOAL, RINK, TUNING } from './sim-constants';
 import { knockLoose } from './puck';
-import type { Skater, World } from './sim-types';
+import type { Act, Skater, World } from './sim-types';
+
+/** Charge fraction from which a release is drawn as a slapshot rather than a wrist shot (animation only). */
+const SLAP_FRACTION = 0.5;
+
+function setAct(s: Skater, act: Act): void {
+  s.act = act;
+  s.actT = 0;
+}
 
 /**
  * Buttons per skater. With the puck: the shoot button charges a shot (released = shoot),
@@ -79,6 +87,7 @@ function burst(s: Skater, intent: Intent | undefined): void {
   s.vx += (dx / len) * TUNING.boostImpulse;
   s.vy += (dy / len) * TUNING.boostImpulse;
   s.checking = TUNING.checkWindow;
+  setAct(s, 'check');
 }
 
 /**
@@ -128,6 +137,7 @@ function shoot(world: World, i: number): void {
   p.vx = Math.cos(angle) * power + s.vx * 0.5;
   p.vy = Math.sin(angle) * power + s.vy * 0.5;
   s.lockout = TUNING.shooterLockout;
+  setAct(s, t >= SLAP_FRACTION ? 'slap' : 'wrist');
   s.charge = 0;
 }
 
@@ -162,5 +172,6 @@ function passPuck(world: World, i: number): void {
   p.vx = Math.cos(angle) * TUNING.passSpeed + s.vx * 0.5;
   p.vy = Math.sin(angle) * TUNING.passSpeed + s.vy * 0.5;
   s.lockout = TUNING.shooterLockout;
+  setAct(s, 'pass');
   s.charge = 0;
 }

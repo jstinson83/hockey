@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hockey sprite lab</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html, body { margin: 0; background: #111; color: #ddd; font: 13px system-ui, sans-serif; }
+      body { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+      nav { padding: 10px; border-right: 1px solid #2c313b; background: #14171d; position: sticky; top: 0; height: 100vh; overflow-y: auto; box-sizing: border-box; }
+      nav h2 { margin: 12px 0 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #7d8696; }
+      nav button { display: flex; justify-content: space-between; width: 100%; margin: 1px 0; padding: 5px 8px; background: none; color: inherit; border: 0; border-radius: 5px; font: inherit; cursor: pointer; text-align: left; }
+      nav button:hover { background: #20252e; }
+      nav button.on { background: #2b3a55; }
+      nav button small { color: #7d8696; }
+      main { padding: 14px 18px; min-width: 0; }
+      .bar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 8px; }
+      .bar label { display: flex; gap: 6px; align-items: center; }
+      .bar select, .bar button { background: #1a1e26; color: inherit; border: 1px solid #3a414d; border-radius: 5px; padding: 3px 8px; font: inherit; }
+      h1 { margin: 0 0 4px; font-size: 18px; }
+      p.note { margin: 0 0 10px; color: #aab2bd; max-width: 70ch; }
+      canvas { display: block; background: #1a1d22; }
+    </style>
+  </head>
+  <body>
+    <nav id="list"></nav>
+    <main>
+      <h1 id="title"></h1>
+      <p class="note" id="note"></p>
+      <div class="bar">
+        <label>Team <select id="team"><option value="0">Red</option><option value="1">Blue</option></select></label>
+        <label><input type="checkbox" id="carry" /> With puck</label>
+        <label>Speed <input type="range" id="speed" min="0.1" max="2" step="0.05" value="1" /></label>
+        <label>Zoom <select id="zoom"><option>1</option><option selected>2</option><option>3</option></select></label>
+        <button id="pause">Pause</button>
+        <button id="export">Export sheet PNG</button>
+      </div>
+      <canvas id="sheet"></canvas>
+    </main>
+    <script type="module" src="/src/sprite-lab.ts"></script>
+  </body>
+</html>

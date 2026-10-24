@@ -47,6 +47,10 @@ Browsers only report a gamepad after a button press on it.
   bottom); the view is an oblique projection (`VIEW.tilt` foreshortens y) and the camera
   scrolls along the ice following the puck. `VIEW` in `sim-constants.ts` holds the scale,
   tilt and camera feel; none of it touches the simulation.
+- `src/sprite-poses.ts` / `sprite-rig.ts` / `sprite-select.ts` - placeholder player sprites. The poses file is the frame
+  list (which animations, how many frames, fps; the spec for real art), the rig bakes any pose to any of 8 facings
+  procedurally, and the selector maps sim state to an animation and frame. `sprites.html` (`/sprites.html` in dev) is the
+  sprite lab: every animation as a contact sheet plus a live preview, and "Export sheet PNG" for an art template.
 - `src/input.ts` - keyboard + Gamepad API -> per-player `Intent`.
 - `src/render.ts` - Canvas drawing; reads the world, never mutates it.
 

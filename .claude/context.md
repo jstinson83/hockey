@@ -18,7 +18,8 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
 - Player switching is manual: the pass button without the puck, or automatic
   when a teammate picks the puck up.
 - Visual target is the NHL 94 look (oblique view, crowd, scratched ice).
-  Skater sprites are not needed yet.
+  Players are procedural placeholder sprites (puppet rig baked to 8 facings, `sprite-*.ts`); real art
+  replaces `getSprite` and keeps the frame set in `sprite-poses.ts`.
 - Art, sound and online play come last.
 
 ## Built so far
@@ -49,4 +50,6 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
   net-crowding plans are exempt on purpose.
 - Pause menu has per-team strategy dropdowns (`strategy-menu.ts`); defaults are swing breakout, press neutral zone, cycle offence.
 - Live tuning panel (`T`) with copy-out of changed values.
+- Player sprites: skater (idle, skate, burst, faceoff, wind, wrist, slap, pass, poke, check, hit, celebrate; with-puck variants) and goalie
+  (stand, drop, slide, butterfly, getup), driven by sim state; sprite lab page (`sprites.html`) to review the frames.
 - Pause screen, fullscreen, AI-vs-AI demo (`D`).
