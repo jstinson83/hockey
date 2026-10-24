@@ -9,6 +9,7 @@ import { initTuningPanel } from './tuning-panel';
 const DT = 1 / 60; // fixed simulation timestep
 const MAX_FRAME = 0.25; // avoid spiral of death after tab switches
 const ORGAN_FACEOFF_CHANCE = 0.5; // share of faceoffs that get the organ riff
+const ORGAN_PLAY_GAP: [number, number] = [25, 60]; // s of live play between random organ riffs (min, max)
 const OPTIONS_BUTTON = 9; // Options / Start in the standard gamepad mapping
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -70,6 +71,8 @@ function pollPauseButton(): void {
 let lastPhase = world.game.phase;
 let lastPeriod = world.game.period;
 let lastRedScore = world.game.score[0];
+const nextOrganGap = () => ORGAN_PLAY_GAP[0] + Math.random() * (ORGAN_PLAY_GAP[1] - ORGAN_PLAY_GAP[0]);
+let organCountdown = nextOrganGap(); // s of live play until the next random riff
 let organRecent = false; // the goal riff already played; skip the faceoff roll that follows it
 let last = performance.now();
 let acc = 0;
@@ -99,6 +102,11 @@ function frame(now: number): void {
     if (redScored || (g.phase === 'faceoff' && lastPhase !== 'faceoff' && !organRecent && Math.random() < ORGAN_FACEOFF_CHANCE)) ambience.organ();
     if (g.phase === 'faceoff' && lastPhase !== 'faceoff') organRecent = false;
     else if (redScored) organRecent = true;
+    // And every so often while the puck is live.
+    if (g.phase === 'play' && (organCountdown -= frameDt) <= 0) {
+      ambience.organ();
+      organCountdown = nextOrganGap();
+    }
     lastRedScore = g.score[0];
     lastPhase = g.phase;
     lastPeriod = g.period;
