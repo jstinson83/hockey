@@ -36,6 +36,13 @@ export interface Goalie {
   down: number;     // s left in the butterfly (0 = standing)
   diveLeft: number; // s left of the sideways slide
   diveX: number;
+  holding: boolean; // has the puck in its glove (controllable; the puck is pinned in front of it)
+  holdT: number;    // s the puck has been held
+  holdFor: number;  // s the AI waits before passing or freezing
+  cool: number;     // s after letting go before it can catch again
+  passHeld: boolean; // previous frame's buttons while holding, for press detection
+  actionHeld: boolean;
+  pokeHeld: boolean;
 }
 
 export interface Puck {
@@ -54,6 +61,7 @@ export interface Game {
   clock: number;      // s left in the period
   score: [number, number];
   lastScorer: Team | null;
+  froze: Team | null; // team whose goalie froze the puck to cause the current faceoff
 }
 
 export interface World {

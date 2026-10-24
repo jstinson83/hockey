@@ -30,6 +30,8 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
 - Nets, goals, physical goalies (reaction delay, butterfly dive), scoreboard,
   game flow (faceoff -> play -> goal -> faceoff, 3x2:00 periods, sudden-death
   overtime, final).
+- Goalie holds: a puck reaching the goalie sticks with a chance that falls with its speed (`goalieCatch*`); the goalie is then steerable
+  (human: pass / clear / freeze; AI: pass or freeze after a moment). A freeze or a hold past `goalieHoldMax` whistles an end-zone faceoff.
 - Skater AI: 5v5 teams, roles (C/L/R/LD/RD), carrier decisions, switching.
 - AI strategies, first slice: per-team breakout plans (`World.breakout`: carry / boards / swing /
   stretch) that change support anchors and the carrier's designated outlet pass while it is deep in

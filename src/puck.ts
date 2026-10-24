@@ -1,5 +1,6 @@
-import { bounceOffBoards, collideNet, collideStatic, firstNetCrossing, NETS } from './collide';
+import { bounceOffBoards, collideNet, collideStatic, defendedNet, firstNetCrossing, NETS } from './collide';
 import { goalieRadius } from './goalie';
+import { holdingGoalie, tryCatch } from './goalie-hold';
 import { TUNING } from './sim-constants';
 import type { World } from './sim-types';
 
@@ -45,6 +46,16 @@ export function updatePuck(world: World, dt: number): void {
     return;
   }
 
+  // A held puck sits in the goalie's glove.
+  const holder = holdingGoalie(world);
+  if (holder) {
+    const net = defendedNet(holder.team);
+    puck.x = holder.x;
+    puck.y = holder.y - net.dir * (goalieRadius(holder) + r + 0.25);
+    puck.vx = puck.vy = 0;
+    return;
+  }
+
   const damp = Math.pow(TUNING.puckFriction, dt);
   puck.vx *= damp;
   puck.vy *= damp;
@@ -61,7 +72,11 @@ export function updatePuck(world: World, dt: number): void {
     puck.y += (puck.vy * dt) / n;
     bounceOffBoards(puck, r, TUNING.puckBounce);
     NETS.forEach((net) => collideNet(puck, r, net, TUNING.netBounce, false));
-    goalies.forEach((g) => collideStatic(puck, r, g, goalieRadius(g), TUNING.goalieBounce));
+    for (const g of goalies) {
+      const sp = Math.hypot(puck.vx, puck.vy);
+      if (collideStatic(puck, r, g, goalieRadius(g), TUNING.goalieBounce) && tryCatch(world, g, sp)) break;
+    }
+    if (holdingGoalie(world)) return;
   }
 
   if (world.game.phase !== 'play') return;

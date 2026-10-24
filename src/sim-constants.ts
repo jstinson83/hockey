@@ -75,6 +75,17 @@ export const TUNING = {
   goalieDiveTime: 0.3,  // s of sideways slide
   goalieDownTime: 0.75, // s spent down before recovering
   goalieBounce: 0.35,   // restitution off the goalie (rebounds)
+  goalieCatchSlow: 0.95, // chance to freeze a puck at goalieCatchLow speed or slower
+  goalieCatchFast: 0.25, // chance to freeze a puck at goalieCatchHigh speed or faster
+  goalieCatchLow: 25,   // puck speed (units/s) at or below which the slow chance applies
+  goalieCatchHigh: 130, // puck speed at or above which the fast chance applies (a full slapshot)
+  goalieHoldSpeed: 12,  // walking speed while holding the puck
+  goalieHoldMax: 3,     // s a human goalie can hold before the whistle goes on its own
+  goalieHoldMin: 0.6,   // s the AI goalie holds at least before passing or freezing
+  goalieHoldAi: 1.0,    // extra s (random) the AI goalie holds
+  goalieAiFreeze: 0.35, // chance the AI goalie freezes the puck rather than passing when it has an outlet
+  goalieClearSpeed: 80, // speed of a goalie's hard clear
+  goalieRecatch: 0.6,   // s after letting go before the goalie can catch again
 
   // Switching players (the pass button without the puck)
   switchChain: 0.7,     // s: presses closer together than this keep cycling down the list

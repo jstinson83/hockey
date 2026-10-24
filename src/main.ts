@@ -66,6 +66,7 @@ function pollPauseButton(): void {
   optionsWasDown = down;
 }
 
+let lastPhase = world.game.phase;
 let last = performance.now();
 let acc = 0;
 
@@ -84,6 +85,9 @@ function frame(now: number): void {
       step(world, [readIntent(P1_KEYS, 0), readIntent(null, 1)], DT);
       acc -= DT;
     }
+    // A stoppage caused by a goalie freezing the puck gets the whistle.
+    if (world.game.phase === 'faceoff' && lastPhase === 'play' && world.game.froze !== null) ambience.whistle();
+    lastPhase = world.game.phase;
     updateCamera(camera, world, frameDt);
   }
 
