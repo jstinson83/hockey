@@ -2,6 +2,7 @@ import crowdUrl from './assets/crowd-loop.wav?url';
 import whistleUrl from './assets/whistle.wav?url';
 import hornUrl from './assets/horn.mp3?url';
 import organUrl from './assets/organ-charge.mp3?url';
+import cheerUrl from './assets/crowd-cheer.mp3?url';
 
 // Background arena crowd. Web Audio rather than <audio loop> so the loop is gapless; the clip
 // itself is pre-crossfaded to loop seamlessly. Browsers block audio until a user gesture, so
@@ -10,6 +11,7 @@ const LEVEL = 0.35; // crowd bed sits under the action
 const WHISTLE_LEVEL = 0.5;
 const HORN_LEVEL = 0.6;
 const ORGAN_LEVEL = 0.5;
+const CHEER_LEVEL = 0.7; // the 1 s cheer layers over the crowd bed
 const ORGAN_LOOPS = [2, 3]; // the riff repeats this many times (picked at random)
 const MUTE_KEY = 'hockey.muted';
 
@@ -23,6 +25,8 @@ export interface Ambience {
   horn(): void;
   /** The arena organ's "charge" riff (home goal, faceoffs, now and then in play), repeated 2-3 times; ignored while it is still playing. */
   organ(): void;
+  /** A one-second crowd cheer layered over the bed (goals, now and then a hit or big save). */
+  cheer(): void;
 }
 
 export function initAmbience(): Ambience {
@@ -34,6 +38,7 @@ export function initAmbience(): Ambience {
   let whistleBuffer: AudioBuffer | null = null;
   let hornBuffer: AudioBuffer | null = null;
   let organBuffer: AudioBuffer | null = null;
+  let cheerBuffer: AudioBuffer | null = null;
   let organGain: GainNode | null = null; // so pausing or muting silences a riff already under way
   let organUntil = 0; // ctx time the current riff ends
 
@@ -60,6 +65,7 @@ export function initAmbience(): Ambience {
     whistleBuffer = await ctx.decodeAudioData(await (await fetch(whistleUrl)).arrayBuffer());
     hornBuffer = await ctx.decodeAudioData(await (await fetch(hornUrl)).arrayBuffer());
     organBuffer = await ctx.decodeAudioData(await (await fetch(organUrl)).arrayBuffer());
+    cheerBuffer = await ctx.decodeAudioData(await (await fetch(cheerUrl)).arrayBuffer());
   }
 
   const unlock = () => {
@@ -88,6 +94,7 @@ export function initAmbience(): Ambience {
     },
     whistle() { playOnce(whistleBuffer, WHISTLE_LEVEL); },
     horn() { playOnce(hornBuffer, HORN_LEVEL); },
+    cheer() { playOnce(cheerBuffer, CHEER_LEVEL); },
     organ() {
       if (!ctx || !organGain || !organBuffer || muted || !active || ctx.currentTime < organUntil) return;
       const loops = ORGAN_LOOPS[Math.floor(Math.random() * ORGAN_LOOPS.length)];
