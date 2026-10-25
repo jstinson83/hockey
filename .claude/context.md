@@ -47,7 +47,7 @@ realism), deployed to Cloud Run (nginx serving the Vite build).
   of the defending team's end; inside it the team collapses toward the slot, never into the crease.
   The loose puck moves in substeps (`puckMaxStep`) so hard shots can't tunnel through the net or goalie.
   Contact strips the puck only with probability `knockChance` once past the speed threshold.
-  Skaters are 5% smaller than the original (`skaterRadius` 2.375).
+  Skaters are ~27% smaller in radius than the original (`skaterRadius` 2.5 -> 1.82); sprites draw at `VIEW.skaterScale` 0.8.
 - Off-puck skaters react to other players, not just the puck (`reactToPlayers` in `ai.ts`, layered over every
   role anchor): spread from teammates (`aiSpacing`), defence/centre/zone walls shade goal side of the most
   dangerous nearby opponent (`aiCover*`), support skaters step off opponents to get open (`aiOpen*`), and a

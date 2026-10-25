@@ -20,7 +20,7 @@ export const TUNING = {
   accel: 90,          // units/s^2 while pushing a direction
   maxSpeed: 38,       // units/s
   friction: 0.6,      // fraction of velocity kept after 1s of coasting
-  skaterRadius: 2.1375, // 10% under the previous 2.375 (5% under the original 2.5)
+  skaterRadius: 1.8169, // 15% under the previous 2.1375 (original 2.5)
   skaterBounce: 0.5,  // restitution between skaters
   wallBounce: 0.1,    // skaters mostly stop on the boards
 
@@ -175,7 +175,8 @@ export const VIEW = {
   arrowMargin: 20,    // px from the screen edge for off-screen skater arrows
   strideUnits: 36,    // world units skated per full left+right stride cycle in the sprites
   animSpeed: 0.75,    // sprite playback rate multiplier (1 = authored fps; strides scale with it too)
-  bodyHeight: 5,     // how tall skaters stand above their shadow, in world units
+  bodyHeight: 4,     // how tall skaters stand above their shadow, in world units
+  skaterScale: 0.8,  // skater sprite size relative to the baked art
   followRate: 5,      // camera catch-up speed (higher = snappier)
   lookahead: 0.35,    // seconds of puck velocity the camera leads by
   endOverscan: 20,    // how far past the end boards the camera may show (the crowd lives there)
