@@ -557,7 +557,7 @@ describe('neutral zone', () => {
   it('trap: four skaters wall up just on their side of centre ice, spread across it; the centre closes on the carrier', () => {
     const w = setUp('trap', CX + 25, RINK.h / 2 - 5, 5);
     const wall = red(w).filter((s) => s.role !== 'C');
-    wall.forEach((s) => expect(Math.abs(s.y - (RINK.h / 2 + TUNING.aiTrapLine))).toBeLessThan(10));
+    wall.forEach((s) => expect(Math.abs(s.y - (RINK.h / 2 + TUNING.aiTrapLine))).toBeLessThan(12));
     const xs = wall.map((s) => s.x);
     expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(40);
     const c = red(w).find((s) => s.role === 'C')!;

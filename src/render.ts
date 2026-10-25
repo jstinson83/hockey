@@ -605,7 +605,8 @@ function drawSkater(ctx: CanvasRenderingContext2D, cam: Camera, world: World, s:
     clock: performance.now() / 1000,
   });
   const spr = getSprite({ kind: 'skater', anim: show.anim, frame: show.frame, dir: dirOf(s.facing), color: s.color, carry: show.carry });
-  ctx.drawImage(spr.img, sx - spr.ax, sy - spr.ay, spr.w, spr.h);
+  const k = VIEW.skaterScale;
+  ctx.drawImage(spr.img, sx - spr.ax * k, sy - spr.ay * k, spr.w * k, spr.h * k);
 
   // The sprite has 8 facings but aim is continuous: show the exact facing for the skater you control.
   if (controlled) {
