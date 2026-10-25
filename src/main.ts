@@ -9,6 +9,8 @@ import { initTuningPanel } from './tuning-panel';
 const DT = 1 / 60; // fixed simulation timestep
 const MAX_FRAME = 0.25; // avoid spiral of death after tab switches
 const ORGAN_FACEOFF_CHANCE = 0.5; // share of faceoffs that get the organ riff
+const CHEER_HIT_CHANCE = 0.3; // share of checks that draw a cheer
+const CHEER_SAVE_CHANCE = 0.5; // share of goalie dives that draw a cheer
 const ORGAN_PLAY_GAP: [number, number] = [25, 60]; // s of live play between random organ riffs (min, max)
 const OPTIONS_BUTTON = 9; // Options / Start in the standard gamepad mapping
 
@@ -71,6 +73,9 @@ function pollPauseButton(): void {
 let lastPhase = world.game.phase;
 let lastPeriod = world.game.period;
 let lastRedScore = world.game.score[0];
+let lastScoreTotal = world.game.score[0] + world.game.score[1];
+let lastStun = world.skaters.map((s) => s.stun);
+let lastDown = world.goalies.map((g) => g.down);
 const nextOrganGap = () => ORGAN_PLAY_GAP[0] + Math.random() * (ORGAN_PLAY_GAP[1] - ORGAN_PLAY_GAP[0]);
 let organCountdown = nextOrganGap(); // s of live play until the next random riff
 let organRecent = false; // the goal riff already played; skip the faceoff roll that follows it
@@ -102,6 +107,14 @@ function frame(now: number): void {
     if (redScored || (g.phase === 'faceoff' && lastPhase !== 'faceoff' && !organRecent && Math.random() < ORGAN_FACEOFF_CHANCE)) ambience.organ();
     if (g.phase === 'faceoff' && lastPhase !== 'faceoff') organRecent = false;
     else if (redScored) organRecent = true;
+    // The crowd roars for every goal, and now and then for a hit (a skater newly stunned) or a goalie's diving save.
+    const scored = g.score[0] + g.score[1] > lastScoreTotal;
+    const hit = world.skaters.some((s, i) => s.stun > 0 && lastStun[i] <= 0);
+    const dive = world.goalies.some((gl, i) => gl.down > 0 && lastDown[i] <= 0);
+    if (scored || (hit && Math.random() < CHEER_HIT_CHANCE) || (dive && Math.random() < CHEER_SAVE_CHANCE)) ambience.cheer();
+    lastScoreTotal = g.score[0] + g.score[1];
+    lastStun = world.skaters.map((s) => s.stun);
+    lastDown = world.goalies.map((gl) => gl.down);
     // And every so often while the puck is live.
     if (g.phase === 'play' && (organCountdown -= frameDt) <= 0) {
       ambience.organ();
