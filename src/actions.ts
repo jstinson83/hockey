@@ -161,6 +161,11 @@ function shoot(world: World, i: number, oneTimer = false): void {
   p.passTo = -1;
   p.vx = Math.cos(angle) * power + s.vx * 0.5;
   p.vy = Math.sin(angle) * power + s.vy * 0.5;
+  // Some shots leave the ice (slappers more often): a high puck can't be smothered by the goalie.
+  if (nextRandom(world) < TUNING.shotLoftChance * (0.5 + t)) {
+    p.vz = TUNING.shotLoftSpeed * (0.6 + nextRandom(world) * 0.4);
+    p.z = 0.01;
+  }
   s.lockout = TUNING.shooterLockout;
   setAct(s, t >= SLAP_FRACTION ? 'slap' : 'wrist');
   s.charge = 0;

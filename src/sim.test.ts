@@ -1302,3 +1302,55 @@ describe('one-timers', () => {
     expect(shot).toBe(true);
   });
 });
+
+describe('puck height', () => {
+  function tune(over: Partial<typeof TUNING>): void {
+    const was = { ...TUNING };
+    Object.assign(TUNING, over);
+    onTestFinished(() => { Object.assign(TUNING, was); });
+  }
+
+  it('a pass an opponent reaches pops up and deflects instead of being picked up', () => {
+    const w = liveWorld();
+    tune({ passPopChance: 1 });
+    w.skaters[0].x = CX; w.skaters[0].y = 60; // opponent standing in the lane
+    w.skaters[1].x = 10; w.skaters[1].y = 10;
+    w.puck.x = CX; w.puck.y = 62; w.puck.vx = 0; w.puck.vy = -40;
+    w.puck.passTeam = 1; w.puck.passTime = 1;
+    step(w, [idle, idle], DT);
+    expect(w.puck.carrier).toBe(-1);
+    expect(w.puck.z).toBeGreaterThan(0);
+    expect(w.puck.vz).toBeGreaterThan(0);
+    run(w, 0.1);
+    expect(w.puck.carrier).toBe(-1); // still in the air, can't be picked up
+    run(w, 2);
+    expect(w.puck.z).toBe(0);
+  });
+
+  it('an airborne puck is not smothered by the goalie, and a low rebound can flip up', () => {
+    const shoot = (z: number) => {
+      const w = liveWorld();
+      const g = w.goalies[0];
+      w.puck.x = g.x; w.puck.y = g.y - 8; w.puck.vx = 0; w.puck.vy = 50; w.puck.z = z;
+      let held = false;
+      for (let i = 0; i < 90; i++) { step(w, [idle, idle], DT); held ||= g.holding; }
+      return { held, w };
+    };
+    tune({ goalieCatchSlow: 1, goalieCatchFast: 1, goalieLoftChance: 1 });
+    expect(shoot(0).held).toBe(true);
+    const hi = shoot(3);
+    expect(hi.held).toBe(false);
+  });
+
+  it('lofted shots happen', () => {
+    tune({ shotLoftChance: 3 });
+    const w = liveWorld();
+    w.puck.carrier = 0;
+    w.skaters[0].facing = 0;
+    w.skaters[0].charge = 0.1;
+    w.skaters[0].actionHeld = true;
+    step(w, [{ ...idle, action: false }, idle], DT);
+    expect(w.puck.carrier).toBe(-1);
+    expect(w.puck.vz).toBeGreaterThan(0);
+  });
+});

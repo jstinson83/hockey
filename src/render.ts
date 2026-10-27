@@ -630,9 +630,20 @@ function drawSkater(ctx: CanvasRenderingContext2D, cam: Camera, world: World, s:
 
 function drawPuck(ctx: CanvasRenderingContext2D, cam: Camera, p: World['puck']): void {
   const { sx, sy } = project(cam, p.x, p.y);
+  const rx = TUNING.puckRadius * S;
+  const ry = rx * T * 0.8;
+  if (p.z > 0) {
+    // Airborne: a shadow stays on the ice and the puck rides above it, a little bigger.
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - 1, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const lift = p.z * S * 0.9;
+  const grow = 1 + Math.min(p.z, 4) * 0.08;
   ctx.fillStyle = '#111';
   ctx.beginPath();
-  ctx.ellipse(sx, sy - 1, TUNING.puckRadius * S, TUNING.puckRadius * S * T * 0.8, 0, 0, Math.PI * 2);
+  ctx.ellipse(sx, sy - 1 - lift, rx * grow, ry * grow, 0, 0, Math.PI * 2);
   ctx.fill();
 }
 

@@ -33,6 +33,17 @@ export const TUNING = {
   pickupRadius: 4.2,  // skater centre -> puck centre
   passProtectTime: 1.0, // s after a pass during which opponents have a shorter reach on the puck
   passInterceptReach: 0.55, // opponents' pickup reach on a pass in flight, as a fraction of pickupRadius
+  puckGravity: 90,    // u/s^2 pulling an airborne puck down
+  puckLandBounce: 0.4, // vertical restitution when it lands
+  airHeight: 0.8,     // above this the puck is airborne: can't be picked up, and the goalie can't smother it
+  shotLoftChance: 0.3, // chance a shot leaves the ice (a slapshot is likelier)
+  shotLoftSpeed: 22,  // vertical launch speed of a lofted shot
+  passPopChance: 0.6, // chance a pass an opponent reaches pops up and deflects off them instead of being picked up
+  popSpeed: 26,       // vertical speed of a deflected pass
+  popKeep: 0.45,      // fraction of the pass's speed kept after deflecting off the opponent
+  popSpread: 0.9,     // rad of random sideways kick on a deflection
+  goalieLoftChance: 0.4, // chance a puck off the goalie flips up into the air
+  goalieLoftSpeed: 20,  // vertical speed of a rebound that flips up
   oneTimerWindow: 1.2, // s after pressing shoot in advance during which the receiver shoots the pass first time
   oneTimerCharge: 0.7, // charge fraction a one-timer is struck with (0 = wrist, 1 = full slapshot)
   oneTimerSpread: 0.05, // extra rad of random error on a one-timer

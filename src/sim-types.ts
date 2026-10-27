@@ -53,6 +53,8 @@ export interface Puck {
   passTeam: -1 | 0 | 1; // team that just passed it, or -1; opponents have a shorter reach while passTime runs
   passTime: number;     // s of pass protection left
   passTo: number;       // skater a pass in flight was aimed at, or -1
+  z: number;            // height above the ice; an airborne puck can't be picked up or frozen
+  vz: number;           // vertical speed
 }
 
 export type Phase = 'faceoff' | 'play' | 'goal' | 'intermission' | 'end';
