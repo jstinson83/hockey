@@ -11,7 +11,7 @@ const LEVEL = 0.35; // crowd bed sits under the action
 const WHISTLE_LEVEL = 0.5;
 const HORN_LEVEL = 0.6;
 const ORGAN_LEVEL = 0.5;
-const CHEER_LEVEL = 0.7; // the 1 s cheer layers over the crowd bed
+const CHEER_LEVEL = 1.0; // the 1 s cheer layers over the crowd bed
 const ORGAN_LOOPS = [2, 3]; // the riff repeats this many times (picked at random)
 const MUTE_KEY = 'hockey.muted';
 
