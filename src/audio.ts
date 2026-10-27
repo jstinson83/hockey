@@ -11,7 +11,9 @@ const LEVEL = 0.35; // crowd bed sits under the action
 const WHISTLE_LEVEL = 0.5;
 const HORN_LEVEL = 0.6;
 const ORGAN_LEVEL = 0.5;
-const CHEER_LEVEL = 1.0; // the 1 s cheer layers over the crowd bed
+const CHEER_LEVEL = 0.6; // the 1 s cheer layers over the crowd bed
+const CHEER_FADE_IN = 0.25; // s ramp up from silence
+const CHEER_FADE_OUT = 0.4; // s ramp down to silence at the end of the clip
 const ORGAN_LOOPS = [2, 3]; // the riff repeats this many times (picked at random)
 const MUTE_KEY = 'hockey.muted';
 
@@ -94,7 +96,20 @@ export function initAmbience(): Ambience {
     },
     whistle() { playOnce(whistleBuffer, WHISTLE_LEVEL); },
     horn() { playOnce(hornBuffer, HORN_LEVEL); },
-    cheer() { playOnce(cheerBuffer, CHEER_LEVEL); },
+    cheer() {
+      if (!ctx || !cheerBuffer || muted || !active) return;
+      const src = ctx.createBufferSource();
+      src.buffer = cheerBuffer;
+      const env = ctx.createGain();
+      const t0 = ctx.currentTime;
+      const end = t0 + cheerBuffer.duration;
+      env.gain.setValueAtTime(0, t0);
+      env.gain.linearRampToValueAtTime(CHEER_LEVEL, t0 + CHEER_FADE_IN);
+      env.gain.setValueAtTime(CHEER_LEVEL, end - CHEER_FADE_OUT);
+      env.gain.linearRampToValueAtTime(0, end);
+      src.connect(env).connect(ctx.destination);
+      src.start(t0);
+    },
     organ() {
       if (!ctx || !organGain || !organBuffer || muted || !active || ctx.currentTime < organUntil) return;
       const loops = ORGAN_LOOPS[Math.floor(Math.random() * ORGAN_LOOPS.length)];
