@@ -1,6 +1,7 @@
 import { bounceOffBoards, collideNet, collideStatic, defendedNet, firstNetCrossing, NETS } from './collide';
 import { goalieRadius } from './goalie';
 import { holdingGoalie, tryCatch } from './goalie-hold';
+import { nextRandom } from './rng';
 import { TUNING } from './sim-constants';
 import type { World } from './sim-types';
 
@@ -14,6 +15,7 @@ export function updatePuck(world: World, dt: number): void {
     puck.y = c.y + Math.sin(c.facing) * TUNING.carryOffset;
     puck.vx = c.vx;
     puck.vy = c.vy;
+    puck.z = puck.vz = 0;
 
     // The puck stays on the skater's side of any net frame: if the carry line crosses
     // one (skating into the back of the net, say), shorten the carry so it rests against it.
@@ -53,8 +55,11 @@ export function updatePuck(world: World, dt: number): void {
     puck.x = holder.x;
     puck.y = holder.y - net.dir * (goalieRadius(holder) + r + 0.25);
     puck.vx = puck.vy = 0;
+    puck.z = puck.vz = 0;
     return;
   }
+
+  flyVertical(puck, dt);
 
   const damp = Math.pow(TUNING.puckFriction, dt);
   puck.vx *= damp;
@@ -74,7 +79,10 @@ export function updatePuck(world: World, dt: number): void {
     NETS.forEach((net) => collideNet(puck, r, net, TUNING.netBounce, false));
     for (const g of goalies) {
       const sp = Math.hypot(puck.vx, puck.vy);
-      if (collideStatic(puck, r, g, goalieRadius(g), TUNING.goalieBounce) && tryCatch(world, g, sp)) break;
+      if (!collideStatic(puck, r, g, goalieRadius(g), TUNING.goalieBounce)) continue;
+      // A high puck can't be smothered; a low one that bounces off sometimes flips up.
+      if (puck.z <= TUNING.airHeight && tryCatch(world, g, sp)) break;
+      if (puck.z <= TUNING.airHeight && nextRandom(world) < TUNING.goalieLoftChance) loft(puck, TUNING.goalieLoftSpeed);
     }
     if (holdingGoalie(world)) return;
   }
@@ -86,7 +94,7 @@ export function updatePuck(world: World, dt: number): void {
   if (puck.passTime > 0) puck.passTime = Math.max(0, puck.passTime - dt);
   // Pickup: nearest eligible skater wins.
   const speed = Math.hypot(puck.vx, puck.vy);
-  if (speed > TUNING.pickupSpeed) return;
+  if (speed > TUNING.pickupSpeed || puck.z > TUNING.airHeight) return;
   let best = -1;
   let bestDist = TUNING.pickupRadius;
   skaters.forEach((s, i) => {
@@ -95,11 +103,41 @@ export function updatePuck(world: World, dt: number): void {
     const reach = puck.passTime > 0 && s.team !== puck.passTeam ? TUNING.pickupRadius * TUNING.passInterceptReach : TUNING.pickupRadius;
     if (d < reach && d < bestDist) { best = i; bestDist = d; }
   });
+  if (best >= 0 && puck.passTime > 0 && skaters[best].team !== puck.passTeam && nextRandom(world) < TUNING.passPopChance) {
+    // The defender gets a stick on the pass but can't control it: it pops up and skips off them.
+    const s = skaters[best];
+    const a = Math.atan2(puck.vy, puck.vx) + (nextRandom(world) * 2 - 1) * TUNING.popSpread;
+    const keep = Math.hypot(puck.vx, puck.vy) * TUNING.popKeep;
+    puck.vx = Math.cos(a) * keep;
+    puck.vy = Math.sin(a) * keep;
+    loft(puck, TUNING.popSpeed);
+    puck.passTime = 0;
+    puck.passTo = -1;
+    s.lockout = 0.4;
+    return;
+  }
   if (best >= 0) {
     puck.carrier = best;
     puck.passTime = 0;
     puck.passTo = -1;
     skaters[best].charge = 0;
+  }
+}
+
+function loft(puck: World['puck'], speed: number): void {
+  puck.vz = speed * (0.7 + 0.3 * Math.min(1, Math.hypot(puck.vx, puck.vy) / 60));
+  puck.z = Math.max(puck.z, 0.01);
+}
+
+/** Gravity on a puck that's off the ice; it bounces a little on landing. */
+function flyVertical(puck: World['puck'], dt: number): void {
+  if (puck.z <= 0 && puck.vz <= 0) { puck.z = puck.vz = 0; return; }
+  puck.vz -= TUNING.puckGravity * dt;
+  puck.z += puck.vz * dt;
+  if (puck.z <= 0) {
+    puck.z = 0;
+    puck.vz = -puck.vz * TUNING.puckLandBounce;
+    if (puck.vz < 4) puck.vz = 0;
   }
 }
 
